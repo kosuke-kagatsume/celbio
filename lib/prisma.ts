@@ -7,22 +7,38 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-// 接続プール（直接接続を使用）
-const pool = globalForPrisma.pool ?? new Pool({
-  connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL,
-})
+function getPool() {
+  if (globalForPrisma.pool) {
+    return globalForPrisma.pool
+  }
 
-// Prisma Pg アダプター
-const adapter = new PrismaPg(pool)
+  // Vercelサーバーレス環境ではDATABASE_URL (pgbouncer経由)を使用
+  const connectionString = process.env.DATABASE_URL
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+  const pool = new Pool({
+    connectionString,
+    max: 1, // サーバーレス環境では最小限のコネクション
+  })
+
+  globalForPrisma.pool = pool
+  return pool
+}
+
+function getPrismaClient() {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma
+  }
+
+  const pool = getPool()
+  const adapter = new PrismaPg(pool)
+
+  const prisma = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 
-if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
-  globalForPrisma.pool = pool
+  return prisma
 }
+
+export const prisma = getPrismaClient()
