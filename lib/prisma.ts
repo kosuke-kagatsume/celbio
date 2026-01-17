@@ -1,11 +1,21 @@
-import { Pool } from 'pg'
-import { PrismaPg } from '@prisma/adapter-pg'
+import { neonConfig } from '@neondatabase/serverless'
+import { PrismaNeon } from '@prisma/adapter-neon'
 import { PrismaClient } from '@prisma/client'
+import ws from 'ws'
 
 // Prisma 7: グローバルキャッシュ
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
-  pool: Pool | undefined
+}
+
+// Supabase Supavisor用の設定（非Neonホスト向け）
+// pipelineConnect を無効化することで Supabase と互換性を確保
+neonConfig.pipelineConnect = false
+
+// Node.js環境（Vercel Serverless）でWebSocketを有効化
+// globalThis.WebSocketが未定義の場合、wsモジュールを使用
+if (typeof globalThis.WebSocket === 'undefined') {
+  neonConfig.webSocketConstructor = ws
 }
 
 // Vercel Serverless環境での接続設定
@@ -23,27 +33,20 @@ function createPrismaClient(): PrismaClient {
   }
 
   // Transaction pooler (6543) をSession pooler (5432) に変換
+  // Session poolerはprepared statementsをサポート
   // pgbouncer=true パラメータを削除
   connectionString = connectionString
     .replace(':6543/', ':5432/')
     .replace('?pgbouncer=true', '')
 
-  // プールを再利用
-  const pool = globalForPrisma.pool ?? new Pool({
+  // PrismaNeonアダプターを使用（Supabase Supavisor と互換性あり）
+  // Prisma 7では、PrismaNeonがPoolConfigを受け取り内部でPoolを作成
+  const adapter = new PrismaNeon({
     connectionString,
     max: 1,
     idleTimeoutMillis: 20000,
     connectionTimeoutMillis: 10000,
-    ssl: {
-      rejectUnauthorized: false, // Supabase SSL
-    },
   })
-
-  if (!globalForPrisma.pool) {
-    globalForPrisma.pool = pool
-  }
-
-  const adapter = new PrismaPg(pool)
 
   const prisma = new PrismaClient({
     adapter,
