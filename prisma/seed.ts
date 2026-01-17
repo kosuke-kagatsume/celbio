@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 
 // Prisma 7: アダプター経由で直接接続
@@ -516,7 +516,7 @@ async function main() {
           action: log.action,
           entityType: log.entityType,
           entityId: log.entityId,
-          oldValue: log.oldValue || null,
+          oldValue: log.oldValue ?? Prisma.DbNull,
           newValue: log.newValue,
         },
       });
