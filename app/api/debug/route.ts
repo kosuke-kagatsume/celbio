@@ -9,11 +9,16 @@ export async function GET() {
   }
 
   // Step 1: 環境変数の確認
+  let dbUrl = process.env.DATABASE_URL || ''
+  // Session poolerに変換
+  const sessionPoolerUrl = dbUrl.replace(':6543/', ':5432/').replace('?pgbouncer=true', '')
+
   results.steps = {
     ...results.steps as object,
     env: {
-      DATABASE_URL: process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'NOT SET',
-      DIRECT_URL: process.env.DIRECT_URL ? `${process.env.DIRECT_URL.substring(0, 30)}...` : 'NOT SET',
+      DATABASE_URL: dbUrl ? `${dbUrl.substring(0, 50)}...` : 'NOT SET',
+      DATABASE_URL_CONVERTED: sessionPoolerUrl ? `${sessionPoolerUrl.substring(0, 50)}...` : 'NOT SET',
+      DIRECT_URL: process.env.DIRECT_URL ? `${process.env.DIRECT_URL.substring(0, 50)}...` : 'NOT SET',
       SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET',
       SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
     },

@@ -14,20 +14,29 @@ function createPrismaClient(): PrismaClient {
     return globalForPrisma.prisma
   }
 
-  // Supabase直接接続URLを使用
-  // Pooler (pgbouncer) はpgライブラリと互換性の問題があるため
-  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
+  // 接続文字列を取得
+  // Supabase Session Pooler (port 5432) を使用
+  let connectionString = process.env.DATABASE_URL
 
   if (!connectionString) {
-    throw new Error('DATABASE_URL or DIRECT_URL must be set')
+    throw new Error('DATABASE_URL must be set')
   }
+
+  // Transaction pooler (6543) をSession pooler (5432) に変換
+  // pgbouncer=true パラメータを削除
+  connectionString = connectionString
+    .replace(':6543/', ':5432/')
+    .replace('?pgbouncer=true', '')
 
   // プールを再利用
   const pool = globalForPrisma.pool ?? new Pool({
     connectionString,
-    max: 1, // サーバーレス環境では最小限
+    max: 1,
     idleTimeoutMillis: 20000,
     connectionTimeoutMillis: 10000,
+    ssl: {
+      rejectUnauthorized: false, // Supabase SSL
+    },
   })
 
   if (!globalForPrisma.pool) {
