@@ -8,35 +8,32 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-// 接続プールの作成
-function createPool(): Pool {
-  if (globalForPrisma.pool) {
-    return globalForPrisma.pool
-  }
-
-  // Vercelサーバーレス環境ではDATABASE_URL (pgbouncer経由)を使用
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 10, // コネクションプールの最大数
-    idleTimeoutMillis: 30000, // アイドル接続のタイムアウト
-    connectionTimeoutMillis: 10000, // 接続タイムアウト
-  })
-
-  // 開発環境ではキャッシュ
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.pool = pool
-  }
-
-  return pool
-}
-
-// Prismaクライアントの作成
+// Vercel Serverless環境での接続設定
 function createPrismaClient(): PrismaClient {
   if (globalForPrisma.prisma) {
     return globalForPrisma.prisma
   }
 
-  const pool = createPool()
+  // Supabase直接接続URLを使用
+  // Pooler (pgbouncer) はpgライブラリと互換性の問題があるため
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
+
+  if (!connectionString) {
+    throw new Error('DATABASE_URL or DIRECT_URL must be set')
+  }
+
+  // プールを再利用
+  const pool = globalForPrisma.pool ?? new Pool({
+    connectionString,
+    max: 1, // サーバーレス環境では最小限
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 10000,
+  })
+
+  if (!globalForPrisma.pool) {
+    globalForPrisma.pool = pool
+  }
+
   const adapter = new PrismaPg(pool)
 
   const prisma = new PrismaClient({
@@ -44,10 +41,7 @@ function createPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 
-  // 開発環境ではキャッシュ（ホットリロード対策）
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = prisma
-  }
+  globalForPrisma.prisma = prisma
 
   return prisma
 }
