@@ -1,0 +1,551 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ユーザー・組織系
+// ============================================
+
+// 加盟店（工務店）
+model Member {
+  id          String   @id @default(uuid())
+  code        String   @unique // 加盟店コード
+  name        String   // 工務店名
+  nameKana    String?  @map("name_kana") // フリガナ（振込名義照合用）
+  postalCode  String?  @map("postal_code")
+  address     String?
+  phone       String?
+  email       String?
+  payerName   String?  @map("payer_name") // 振込名義（入金消込用）
+  notes       String?  // 備考
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users          User[]
+  quotes         Quote[]
+  orders         Order[]
+  invoices       Invoice[]
+  invoiceBundles InvoiceBundle[]
+  messageThreads MessageThread[]
+
+  @@map("members")
+}
+
+// メーカー（仕入先）
+model Partner {
+  id                String   @id @default(uuid())
+  code              String   @unique // メーカーコード
+  name              String   // メーカー名
+  nameKana          String?  @map("name_kana") // フリガナ
+  postalCode        String?  @map("postal_code")
+  address           String?
+  phone             String?
+  email             String?
+  // 銀行口座情報（振込用）
+  bankName          String?  @map("bank_name")
+  bankBranch        String?  @map("bank_branch")
+  bankAccountType   String?  @map("bank_account_type") // 普通/当座
+  bankAccountNumber String?  @map("bank_account_number")
+  bankAccountName   String?  @map("bank_account_name")
+  notes             String?  // 備考
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users           User[]
+  products        Product[]
+  quoteItems      QuoteItem[]
+  orderItems      OrderItem[]
+  invoices        Invoice[]
+  partnerPayments PartnerPayment[]
+  messageThreads  MessageThread[]
+
+  @@map("partners")
+}
+
+// ユーザー（全役割共通）
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String
+  role         String    // admin/member/partner
+  memberId     String?   @map("member_id")
+  partnerId    String?   @map("partner_id")
+  status       String    @default("active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Supabase Auth連携用
+  supabaseUserId String? @unique @map("supabase_user_id")
+
+  // Relations
+  member         Member?         @relation(fields: [memberId], references: [id])
+  partner        Partner?        @relation(fields: [partnerId], references: [id])
+  quotes         Quote[]
+  orders         Order[]
+  invoiceBundles InvoiceBundle[]
+  payments       Payment[]       @relation("ApprovedBy")
+  messages       Message[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  quoteFiles     QuoteFile[]
+
+  @@map("users")
+}
+
+// ============================================
+// 商材系
+// ============================================
+
+// 商材カテゴリ
+model Category {
+  id          String   @id @default(uuid())
+  code        String   @unique // カテゴリコード
+  name        String   // カテゴリ名（断熱パネル、太陽光等）
+  flowType    String   @default("A") @map("flow_type") // A（即発注）/ B（仕様調整必要）
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  products Product[]
+  quotes   Quote[]
+
+  @@map("categories")
+}
+
+// 商材マスタ
+model Product {
+  id           String   @id @default(uuid())
+  partnerId    String   @map("partner_id")
+  categoryId   String   @map("category_id")
+  code         String   @unique // 商品コード
+  name         String   // 商品名
+  description  String?
+  unit         String?  // 単位（枚、セット、式等）
+  unitPrice    Decimal? @map("unit_price") @db.Decimal(12, 2) // 単価（Type Aのみ）
+  productType  String   @default("TYPE_A") @map("product_type") // TYPE_A（即発注）/ TYPE_B（見積必要）
+  isActive     Boolean  @default(true) @map("is_active")
+  specifications Json?  // 仕様詳細（JSON）
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  partner    Partner     @relation(fields: [partnerId], references: [id])
+  category   Category    @relation(fields: [categoryId], references: [id])
+  quoteItems QuoteItem[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+// ============================================
+// 見積もり系（Type B用）
+// ============================================
+
+// 見積もり依頼
+model Quote {
+  id              String    @id @default(uuid())
+  quoteNumber     String    @unique @map("quote_number") // 見積番号
+  memberId        String    @map("member_id")
+  userId          String    @map("user_id") // 依頼した監督
+  categoryId      String    @map("category_id")
+  status          String    // draft/requested/responded/approved/rejected
+  title           String?   // 見積もりタイトル
+  description     String?   // 依頼内容詳細
+  deliveryAddress String?   @map("delivery_address") // 納品先住所
+  desiredDate     DateTime? @map("desired_date") // 希望納期
+  totalAmount     Decimal?  @map("total_amount") @db.Decimal(12, 2)
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  member   Member      @relation(fields: [memberId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  category Category    @relation(fields: [categoryId], references: [id])
+  items    QuoteItem[]
+  files    QuoteFile[]
+  orders   Order[]
+  threads  MessageThread[]
+
+  @@map("quotes")
+}
+
+// 見積もり明細（メーカー別）
+model QuoteItem {
+  id            String    @id @default(uuid())
+  quoteId       String    @map("quote_id")
+  partnerId     String    @map("partner_id")
+  productId     String?   @map("product_id") // 既存商品の場合
+  itemName      String    @map("item_name") // 品名
+  specification String?   // 仕様詳細
+  quantity      Decimal?  @db.Decimal(10, 2)
+  unit          String?
+  unitPrice     Decimal?  @map("unit_price") @db.Decimal(12, 2)
+  subtotal      Decimal?  @db.Decimal(12, 2)
+  status        String?   // pending/quoted/confirmed
+  quotedAt      DateTime? @map("quoted_at") // メーカー回答日時
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  quote      Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  partner    Partner     @relation(fields: [partnerId], references: [id])
+  product    Product?    @relation(fields: [productId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("quote_items")
+}
+
+// 見積もり添付ファイル（図面等）
+model QuoteFile {
+  id         String   @id @default(uuid())
+  quoteId    String   @map("quote_id")
+  fileType   String?  @map("file_type") // 配置図/平面図/立面図/その他
+  fileName   String   @map("file_name")
+  fileUrl    String   @map("file_url")
+  fileSize   Int?     @map("file_size")
+  uploadedBy String?  @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  quote    Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  uploader User? @relation(fields: [uploadedBy], references: [id])
+
+  @@map("quote_files")
+}
+
+// ============================================
+// 発注系
+// ============================================
+
+// 発注
+model Order {
+  id              String    @id @default(uuid())
+  orderNumber     String    @unique @map("order_number") // 発注番号
+  memberId        String    @map("member_id")
+  userId          String    @map("user_id") // 発注した監督
+  quoteId         String?   @map("quote_id") // Type Bの場合、元の見積もり
+  status          String    // draft/ordered/invoiced/paid/confirmed/shipped/delivered/completed
+  deliveryAddress String    @map("delivery_address") // 納品先住所
+  desiredDate     DateTime? @map("desired_date") // 希望納期
+  note            String?   // 備考
+  totalAmount     Decimal   @map("total_amount") @db.Decimal(12, 2)
+  orderedAt       DateTime? @map("ordered_at") // 発注日時
+  confirmedAt     DateTime? @map("confirmed_at") // 正式発注確定日時
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  member   Member          @relation(fields: [memberId], references: [id])
+  user     User            @relation(fields: [userId], references: [id])
+  quote    Quote?          @relation(fields: [quoteId], references: [id])
+  items    OrderItem[]
+  invoices Invoice[]
+  threads  MessageThread[]
+
+  @@map("orders")
+}
+
+// 発注明細
+model OrderItem {
+  id            String    @id @default(uuid())
+  orderId       String    @map("order_id")
+  partnerId     String    @map("partner_id")
+  productId     String?   @map("product_id")
+  quoteItemId   String?   @map("quote_item_id") // Type Bの場合
+  itemName      String    @map("item_name")
+  specification String?
+  quantity      Decimal   @db.Decimal(10, 2)
+  unit          String?
+  unitPrice     Decimal   @map("unit_price") @db.Decimal(12, 2)
+  subtotal      Decimal   @db.Decimal(12, 2)
+  status        String?   // pending/confirmed/shipped/delivered
+  shippedAt     DateTime? @map("shipped_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  partner   Partner    @relation(fields: [partnerId], references: [id])
+  product   Product?   @relation(fields: [productId], references: [id])
+  quoteItem QuoteItem? @relation(fields: [quoteItemId], references: [id])
+
+  @@map("order_items")
+}
+
+// ============================================
+// 請求・決済系
+// ============================================
+
+// 請求書（メーカー発行）
+model Invoice {
+  id            String    @id @default(uuid())
+  invoiceNumber String    @unique @map("invoice_number") // 請求書番号
+  orderId       String    @map("order_id")
+  partnerId     String    @map("partner_id")
+  memberId      String    @map("member_id")
+  amount        Decimal   @db.Decimal(12, 2) // 請求金額
+  taxAmount     Decimal?  @map("tax_amount") @db.Decimal(12, 2) // 消費税額
+  totalAmount   Decimal   @map("total_amount") @db.Decimal(12, 2) // 税込合計
+  pdfUrl        String?   @map("pdf_url") // 請求書PDF URL
+  status        String    // issued/sent/paid/cancelled
+  issuedAt      DateTime? @map("issued_at") // 発行日
+  dueDate       DateTime? @map("due_date") // 支払期限
+  paidAt        DateTime? @map("paid_at") // 支払日
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  order               Order                @relation(fields: [orderId], references: [id])
+  partner             Partner              @relation(fields: [partnerId], references: [id])
+  member              Member               @relation(fields: [memberId], references: [id])
+  payments            Payment[]
+  bundleInvoices      BundleInvoice[]
+  partnerPaymentItems PartnerPaymentItem[]
+
+  @@map("invoices")
+}
+
+// 請求書おまとめ
+model InvoiceBundle {
+  id           String   @id @default(uuid())
+  bundleNumber String   @unique @map("bundle_number") // おまとめ番号
+  memberId     String   @map("member_id")
+  userId       String   @map("user_id")
+  totalAmount  Decimal  @map("total_amount") @db.Decimal(12, 2) // 合計金額
+  pdfUrl       String?  @map("pdf_url") // 合計請求書PDF URL
+  status       String   // created/paid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  member         Member          @relation(fields: [memberId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  bundleInvoices BundleInvoice[]
+  payments       Payment[]
+
+  @@map("invoice_bundles")
+}
+
+// おまとめ請求書の明細
+model BundleInvoice {
+  id        String   @id @default(uuid())
+  bundleId  String   @map("bundle_id")
+  invoiceId String   @map("invoice_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  bundle  InvoiceBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  invoice Invoice       @relation(fields: [invoiceId], references: [id])
+
+  @@unique([bundleId, invoiceId])
+  @@map("bundle_invoices")
+}
+
+// 入金（消込）
+model Payment {
+  id         String    @id @default(uuid())
+  invoiceId  String?   @map("invoice_id") // 単体請求書への入金
+  bundleId   String?   @map("bundle_id") // おまとめへの入金
+  bankTxnId  String?   @map("bank_txn_id") // 紐付いた銀行取引
+  amount     Decimal   @db.Decimal(12, 2)
+  status     String    // pending/matched/approved/error
+  matchType  String?   @map("match_type") // auto/manual
+  difference Decimal?  @db.Decimal(12, 2) // 差異金額
+  approvedBy String?   @map("approved_by") // 承認者
+  approvedAt DateTime? @map("approved_at")
+  note       String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  invoice         Invoice?         @relation(fields: [invoiceId], references: [id])
+  bundle          InvoiceBundle?   @relation(fields: [bundleId], references: [id])
+  bankTransaction BankTransaction? @relation(fields: [bankTxnId], references: [id])
+  approver        User?            @relation("ApprovedBy", fields: [approvedBy], references: [id])
+
+  @@map("payments")
+}
+
+// 銀行取引データ
+model BankTransaction {
+  id              String   @id @default(uuid())
+  transactionDate DateTime @map("transaction_date") // 取引日
+  senderName      String   @map("sender_name") // 振込人名義
+  senderNameKana  String?  @map("sender_name_kana") // 振込人名義（カナ）
+  amount          Decimal  @db.Decimal(12, 2) // 金額
+  balance         Decimal? @db.Decimal(12, 2) // 残高
+  description     String?  // 摘要
+  matched         Boolean  @default(false)
+  importedAt      DateTime @default(now()) @map("imported_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  payments Payment[]
+
+  @@map("bank_transactions")
+}
+
+// メーカーへの支払い（月次一括）
+model PartnerPayment {
+  id           String    @id @default(uuid())
+  partnerId    String    @map("partner_id")
+  periodYear   Int       @map("period_year") // 対象年
+  periodMonth  Int       @map("period_month") // 対象月
+  totalAmount  Decimal   @map("total_amount") @db.Decimal(12, 2) // 支払総額
+  status       String    // pending/approved/transferred/completed
+  transferDate DateTime? @map("transfer_date") // 振込予定日/実行日
+  transferRef  String?   @map("transfer_ref") // 振込参照番号
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  partner Partner              @relation(fields: [partnerId], references: [id])
+  items   PartnerPaymentItem[]
+
+  @@unique([partnerId, periodYear, periodMonth])
+  @@map("partner_payments")
+}
+
+// メーカー支払い明細
+model PartnerPaymentItem {
+  id               String   @id @default(uuid())
+  partnerPaymentId String   @map("partner_payment_id")
+  invoiceId        String   @map("invoice_id")
+  amount           Decimal  @db.Decimal(12, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  partnerPayment PartnerPayment @relation(fields: [partnerPaymentId], references: [id], onDelete: Cascade)
+  invoice        Invoice        @relation(fields: [invoiceId], references: [id])
+
+  @@map("partner_payment_items")
+}
+
+// ============================================
+// メッセージ・通知系
+// ============================================
+
+// メッセージスレッド
+model MessageThread {
+  id         String   @id @default(uuid())
+  subject    String?
+  threadType String   @map("thread_type") // order/quote/inquiry
+  orderId    String?  @map("order_id")
+  quoteId    String?  @map("quote_id")
+  memberId   String?  @map("member_id")
+  partnerId  String?  @map("partner_id")
+  status     String   @default("open") // open/closed
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  order    Order?    @relation(fields: [orderId], references: [id])
+  quote    Quote?    @relation(fields: [quoteId], references: [id])
+  member   Member?   @relation(fields: [memberId], references: [id])
+  partner  Partner?  @relation(fields: [partnerId], references: [id])
+  messages Message[]
+
+  @@map("message_threads")
+}
+
+// メッセージ
+model Message {
+  id             String   @id @default(uuid())
+  threadId       String   @map("thread_id")
+  senderId       String   @map("sender_id")
+  content        String
+  isAdminVisible Boolean  @default(true) @map("is_admin_visible")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User          @relation(fields: [senderId], references: [id])
+  files  MessageFile[]
+
+  @@map("messages")
+}
+
+// メッセージ添付ファイル
+model MessageFile {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  fileSize  Int?     @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("message_files")
+}
+
+// 通知
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String    // order_created, invoice_issued, payment_received, etc.
+  title     String
+  message   String?
+  linkUrl   String?   @map("link_url") // クリック時の遷移先
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ============================================
+// 監査・設定系
+// ============================================
+
+// 操作ログ
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String   // create/update/delete/approve/etc.
+  entityType String   @map("entity_type") // order/invoice/payment/etc.
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// システム設定
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String?
+  description String?
+  updatedBy   String?  @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}

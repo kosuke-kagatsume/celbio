@@ -1,198 +1,222 @@
 'use client';
 
-import { Header } from '@/components/layout/header';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Clock, CheckCircle2, Building2, AlertCircle } from 'lucide-react';
+  Receipt,
+  CreditCard,
+  Building2,
+  Factory,
+  AlertCircle,
+  Clock,
+  TrendingUp,
+  FileText,
+  ShoppingCart,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
-import { currentAdminUser, mockQuotes, mockNotifications } from '@/lib/mock-data';
-import { QuoteStatus } from '@/lib/types';
 
-const statusConfig: Record<QuoteStatus, { color: string; icon: React.ReactNode }> = {
-  '依頼受付': { color: 'bg-blue-100 text-blue-800', icon: <AlertCircle className="h-4 w-4" /> },
-  '見積中': { color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="h-4 w-4" /> },
-  '見積完了': { color: 'bg-green-100 text-green-800', icon: <CheckCircle2 className="h-4 w-4" /> },
-};
-
-export default function AdminDashboardPage() {
-  const adminNotifications = mockNotifications.filter(n => n.userId === currentAdminUser.id);
-
-  const pendingQuotes = mockQuotes.filter(q => q.status === '依頼受付');
-  const inProgressQuotes = mockQuotes.filter(q => q.status === '見積中');
-  const completedQuotes = mockQuotes.filter(q => q.status === '見積完了');
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header user={currentAdminUser} notifications={adminNotifications} />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">管理ダッシュボード</h1>
-            <p className="text-gray-500 mt-1">全工務店からの見積依頼を管理</p>
-          </div>
-          <Link href="/admin/contractors">
-            <Button variant="outline">
-              <Building2 className="mr-2 h-4 w-4" />
-              工務店管理
-            </Button>
-          </Link>
-        </div>
-
-        {/* 統計カード */}
-        <div className="grid gap-4 md:grid-cols-4 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総依頼数</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{mockQuotes.length}件</div>
-              <p className="text-xs text-muted-foreground">すべての工務店</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-900">要確認</CardTitle>
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-900">{pendingQuotes.length}件</div>
-              <p className="text-xs text-blue-700">承認待ち</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">見積中</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{inProgressQuotes.length}件</div>
-              <p className="text-xs text-muted-foreground">作成中</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">完了済み</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{completedQuotes.length}件</div>
-              <p className="text-xs text-muted-foreground">今月</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* タブで分類された依頼一覧 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>見積依頼一覧</CardTitle>
-            <CardDescription>ステータス別に見積依頼を管理</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="pending" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="pending" className="relative">
-                  依頼受付
-                  {pendingQuotes.length > 0 && (
-                    <Badge className="ml-2 bg-blue-600">{pendingQuotes.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="in-progress">
-                  見積中
-                  {inProgressQuotes.length > 0 && (
-                    <Badge className="ml-2 bg-yellow-600">{inProgressQuotes.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="completed">完了済み</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="pending" className="mt-4">
-                <QuoteTable quotes={pendingQuotes} />
-              </TabsContent>
-
-              <TabsContent value="in-progress" className="mt-4">
-                <QuoteTable quotes={inProgressQuotes} />
-              </TabsContent>
-
-              <TabsContent value="completed" className="mt-4">
-                <QuoteTable quotes={completedQuotes} />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
-  );
+interface DashboardData {
+  pendingQuotes: number;
+  activeOrders: number;
+  unpaidInvoices: number;
+  pendingPayments: number;
+  monthlyOrderAmount: number;
+  monthlyOrderCount: number;
+  monthlyPaymentAmount: number;
+  monthlyPaymentCount: number;
+  members: number;
+  partners: number;
 }
 
-function QuoteTable({ quotes }: { quotes: typeof mockQuotes }) {
-  if (quotes.length === 0) {
+export default function AdminDashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      const response = await fetch('/api/dashboard');
+      if (response.ok) {
+        const result = await response.json();
+        setData(result);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+    }).format(amount);
+  };
+
+  if (isLoading) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-        <p>該当する見積依頼はありません</p>
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>依頼日</TableHead>
-          <TableHead>工務店</TableHead>
-          <TableHead>住所</TableHead>
-          <TableHead>工事範囲</TableHead>
-          <TableHead>容量</TableHead>
-          <TableHead>ステータス</TableHead>
-          <TableHead className="text-right">操作</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {quotes.map((quote) => {
-          const config = statusConfig[quote.status];
-          return (
-            <TableRow key={quote.id}>
-              <TableCell>
-                {new Date(quote.createdAt).toLocaleDateString('ja-JP')}
-              </TableCell>
-              <TableCell className="font-medium">{quote.contractorName}</TableCell>
-              <TableCell className="max-w-xs truncate">{quote.address}</TableCell>
-              <TableCell>{quote.workScope}</TableCell>
-              <TableCell>{quote.desiredCapacity}</TableCell>
-              <TableCell>
-                <Badge className={config.color}>
-                  <span className="flex items-center gap-1">
-                    {config.icon}
-                    {quote.status}
-                  </span>
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <Link href={`/admin/quotes/${quote.id}`}>
-                  <Button variant="ghost" size="sm">
-                    {quote.status === '依頼受付' ? '確認・承認' : '詳細'}
-                  </Button>
-                </Link>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">ダッシュボード</h1>
+        <p className="text-muted-foreground">セリビオ管理画面</p>
+      </div>
+
+      {/* アラートカード */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Link href="/admin/quotes">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">承認待ち見積</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.pendingQuotes || 0}件</div>
+              {(data?.pendingQuotes || 0) > 0 && (
+                <p className="text-xs text-orange-600 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  対応が必要です
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/orders">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">進行中発注</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.activeOrders || 0}件</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <Clock className="h-3 w-3 inline mr-1" />
+                処理中
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/invoices">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">未払い請求書</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.unpaidInvoices || 0}件</div>
+              {(data?.unpaidInvoices || 0) > 0 && (
+                <p className="text-xs text-orange-600 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  入金待ち
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/payments">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">承認待ち入金</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.pendingPayments || 0}件</div>
+              {(data?.pendingPayments || 0) > 0 && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  差異確認が必要
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* 今月の実績 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              今月の発注
+            </CardTitle>
+            <CardDescription>
+              {new Date().getFullYear()}年{new Date().getMonth() + 1}月
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {formatCurrency(data?.monthlyOrderAmount || 0)}
+            </div>
+            <p className="text-muted-foreground">
+              {data?.monthlyOrderCount || 0}件の発注
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              今月の入金
+            </CardTitle>
+            <CardDescription>
+              {new Date().getFullYear()}年{new Date().getMonth() + 1}月
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">
+              {formatCurrency(data?.monthlyPaymentAmount || 0)}
+            </div>
+            <p className="text-muted-foreground">
+              {data?.monthlyPaymentCount || 0}件の入金
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 登録状況 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link href="/admin/members">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">登録加盟店</CardTitle>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.members || 0}社</div>
+              <p className="text-xs text-muted-foreground">アクティブ</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/partners">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">登録メーカー</CardTitle>
+              <Factory className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.partners || 0}社</div>
+              <p className="text-xs text-muted-foreground">アクティブ</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+    </div>
   );
 }
