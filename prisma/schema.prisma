@@ -549,3 +549,222 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// ============================================================================
+// 入社手続き（Onboarding）
+// ============================================================================
+
+model OnboardingApplication {
+  id                 String    @id @default(uuid())
+  tenantId           String    @map("tenant_id")
+  employeeId         String?   @map("employee_id") // 採番前はnull
+  applicantEmail     String    @map("applicant_email")
+  applicantName      String    @map("applicant_name")
+  hireDate           DateTime  @map("hire_date") @db.Date
+  status             String    @default("draft") // draft, submitted, returned, approved, registered
+
+  // フォームID参照
+  basicInfoFormId    String?   @map("basic_info_form_id")
+  familyInfoFormId   String?   @map("family_info_form_id")
+  bankAccountFormId  String?   @map("bank_account_form_id")
+  commuteRouteFormId String?   @map("commute_route_form_id")
+
+  // タイムスタンプ
+  deadline           DateTime
+  submittedAt        DateTime? @map("submitted_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+
+  // アクセストークン
+  accessToken        String    @unique @map("access_token")
+
+  // 組織情報
+  department         String?
+  position           String?
+
+  // メモ
+  hrNotes            String?   @map("hr_notes") @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // リレーション
+  basicInfo          OnboardingBasicInfo?
+  familyInfo         OnboardingFamilyInfo?
+  bankAccount        OnboardingBankAccount?
+  commuteRoute       OnboardingCommuteRoute?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([applicantEmail])
+  @@index([accessToken])
+  @@map("onboarding_applications")
+}
+
+model OnboardingBasicInfo {
+  id                 String    @id @default(uuid())
+  applicationId      String    @unique @map("application_id")
+  tenantId           String    @map("tenant_id")
+  status             String    @default("draft")
+
+  // 氏名
+  lastNameKanji      String?   @map("last_name_kanji")
+  firstNameKanji     String?   @map("first_name_kanji")
+  lastNameKana       String?   @map("last_name_kana")
+  firstNameKana      String?   @map("first_name_kana")
+
+  // 個人情報
+  email              String?
+  hireDate           DateTime? @map("hire_date") @db.Date
+  birthDate          DateTime? @map("birth_date") @db.Date
+  gender             String?
+  phoneNumber        String?   @map("phone_number")
+  personalEmail      String?   @map("personal_email")
+
+  // 住所（JSON）
+  currentAddress     Json?     @map("current_address")
+  residentAddress    Json?     @map("resident_address")
+
+  // 緊急連絡先（JSON）
+  emergencyContact   Json?     @map("emergency_contact")
+
+  // 社会保険（JSON）
+  socialInsurance    Json?     @map("social_insurance")
+
+  // マイナンバー（暗号化）
+  myNumberEncrypted  Json?     @map("my_number_encrypted")
+  myNumberSubmitted  Boolean   @default(false) @map("my_number_submitted")
+
+  // その他提出書類（JSON）
+  documents          Json?
+
+  // タイムスタンプ
+  savedAt            DateTime? @map("saved_at")
+  submittedAt        DateTime? @map("submitted_at")
+  returnedAt         DateTime? @map("returned_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  reviewComment      String?   @map("review_comment") @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // リレーション
+  application        OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("onboarding_basic_info")
+}
+
+model OnboardingFamilyInfo {
+  id                 String    @id @default(uuid())
+  applicationId      String    @unique @map("application_id")
+  tenantId           String    @map("tenant_id")
+  status             String    @default("draft")
+
+  email              String?
+  employeeNumber     String?   @map("employee_number")
+  lastNameKanji      String?   @map("last_name_kanji")
+  firstNameKanji     String?   @map("first_name_kanji")
+
+  hasSpouse          Boolean   @default(false) @map("has_spouse")
+  spouse             Json?
+  familyMembers      Json?     @map("family_members") // 最大6名の配列
+
+  // タイムスタンプ
+  savedAt            DateTime? @map("saved_at")
+  submittedAt        DateTime? @map("submitted_at")
+  returnedAt         DateTime? @map("returned_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  reviewComment      String?   @map("review_comment") @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  application        OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("onboarding_family_info")
+}
+
+model OnboardingBankAccount {
+  id                 String    @id @default(uuid())
+  applicationId      String    @unique @map("application_id")
+  tenantId           String    @map("tenant_id")
+  status             String    @default("draft")
+
+  email              String?
+  employeeNumber     String?   @map("employee_number")
+  fullName           String?   @map("full_name")
+
+  applicationType    String?   @map("application_type") // new, change
+  consent            Boolean   @default(false)
+
+  // 口座情報
+  bankName           String?   @map("bank_name")
+  bankCode           String?   @map("bank_code")
+  branchName         String?   @map("branch_name")
+  branchCode         String?   @map("branch_code")
+  accountNumber      String?   @map("account_number")
+  accountHolderKana  String?   @map("account_holder_kana")
+
+  // タイムスタンプ
+  savedAt            DateTime? @map("saved_at")
+  submittedAt        DateTime? @map("submitted_at")
+  returnedAt         DateTime? @map("returned_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  reviewComment      String?   @map("review_comment") @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  application        OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("onboarding_bank_account")
+}
+
+model OnboardingCommuteRoute {
+  id                 String    @id @default(uuid())
+  applicationId      String    @unique @map("application_id")
+  tenantId           String    @map("tenant_id")
+  status             String    @default("draft")
+
+  // 確認事項（JSON）
+  confirmations      Json?
+
+  // 基本項目
+  applicationType    String?   @map("application_type")
+  employeeNumber     String?   @map("employee_number")
+  name               String?
+  address            String?
+
+  commuteStatus      String?   @map("commute_status") // commute, full_remote
+  route              String?
+  distance           Float?
+  commuteMethod      String?   @map("commute_method") // walk, public_transit, private_car
+
+  // 公共交通機関（JSON）
+  publicTransit      Json?     @map("public_transit")
+
+  // マイカー（JSON）
+  privateCar         Json?     @map("private_car")
+
+  // タイムスタンプ
+  savedAt            DateTime? @map("saved_at")
+  submittedAt        DateTime? @map("submitted_at")
+  returnedAt         DateTime? @map("returned_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedBy         String?   @map("approved_by")
+  reviewComment      String?   @map("review_comment") @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  application        OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("onboarding_commute_route")
+}
