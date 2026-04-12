@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { QuoteStatusBadge } from '@/components/quotes/quote-status-badge'
 import { QuoteItemsTable } from '@/components/quotes/quote-items-table'
-import { ArrowLeft, Calculator, Building2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calculator, Building2, Loader2, Download } from 'lucide-react'
 
 interface QuoteDetail {
   id: string
@@ -167,6 +167,15 @@ export default function AdminQuoteDetailPage() {
             <QuoteItemsTable items={quote.items} role="admin" />
           </CardContent>
         </Card>
+
+        {/* PDFダウンロード */}
+        {['responded', 'approved'].includes(quote.status) && (
+          <Button variant="outline" className="w-full min-h-12" asChild>
+            <a href={`/api/quotes/${id}/pdf`} download>
+              <Download className="mr-2 h-4 w-4" />見積書PDFダウンロード
+            </a>
+          </Button>
+        )}
 
         {/* 添付ファイル */}
         {quote.files.length > 0 && (

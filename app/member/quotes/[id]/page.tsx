@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Send, CheckCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Loader2, Download } from 'lucide-react'
 
 interface QuoteDetail {
   id: string
@@ -192,6 +192,13 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
 
         {/* アクション */}
         <div className="space-y-3 pb-4">
+          {['responded', 'approved'].includes(quote.status) && (
+            <Button variant="outline" className="w-full min-h-12" asChild>
+              <a href={`/api/quotes/${id}/pdf`} download>
+                <Download className="mr-2 h-4 w-4" />見積書PDFダウンロード
+              </a>
+            </Button>
+          )}
           {quote.status === 'draft' && (
             <Button className="w-full min-h-12" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

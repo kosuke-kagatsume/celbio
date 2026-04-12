@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { OrderStatusBadge } from '@/components/orders/order-status-badge'
-import { ArrowLeft, Loader2, ShieldCheck, CreditCard, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Loader2, ShieldCheck, CreditCard, CheckCircle2, Download } from 'lucide-react'
 
 interface OrderItem {
   id: string
@@ -229,6 +229,13 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
       {/* アクションボタン */}
       <div className="space-y-3">
+        {order.status !== 'draft' && (
+          <Button variant="outline" className="w-full min-h-12" asChild>
+            <a href={`/api/orders/${id}/pdf`} download>
+              <Download className="mr-2 h-4 w-4" />発注書PDFダウンロード
+            </a>
+          </Button>
+        )}
         {order.status === 'draft' && paymentConfirmed && (
           <Button className="w-full min-h-12" onClick={handleConfirmOrder} disabled={isConfirming}>
             {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}

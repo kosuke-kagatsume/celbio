@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireRole(['admin']);
 
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type') // manufacturer / electrician
+
     const partners = await prisma.partner.findMany({
+      where: type ? { partnerType: type } : undefined,
       include: {
         users: {
           select: {
@@ -25,7 +29,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(partners);
+    return NextResponse.json(type ? { partners } : partners);
   } catch (error) {
     console.error('Error fetching partners:', error);
     return NextResponse.json(
