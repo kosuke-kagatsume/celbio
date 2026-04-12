@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       prisma.order.findMany({
         where: whereClause,
         include: {
+          project: { select: { id: true, projectNumber: true, clientName: true, paymentConfirmedAt: true } },
           member: { select: { id: true, name: true, code: true } },
           user: { select: { id: true, name: true } },
           quote: { select: { id: true, quoteNumber: true, title: true } },
