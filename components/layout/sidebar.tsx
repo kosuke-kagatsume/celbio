@@ -19,6 +19,8 @@ import {
   MessageSquare,
   BarChart3,
   Banknote,
+  Wrench,
+  MapPin,
   X,
 } from 'lucide-react';
 import type { UserRole } from '@/lib/auth';
@@ -74,6 +76,16 @@ const partnerNavItems: NavItem[] = [
   { title: '設定', href: '/partner/settings', icon: <Settings className="h-5 w-5" /> },
 ];
 
+const electricianNavItems: NavItem[] = [
+  { title: 'ダッシュボード', href: '/electrician/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { title: '受注・施工管理', href: '/electrician/orders', icon: <Wrench className="h-5 w-5" /> },
+  { title: '担当エリア', href: '/electrician/area', icon: <MapPin className="h-5 w-5" /> },
+  { title: '請求書発行', href: '/electrician/invoices', icon: <Receipt className="h-5 w-5" /> },
+  { title: '入金確認', href: '/electrician/payments', icon: <CreditCard className="h-5 w-5" /> },
+  { title: '問い合わせ', href: '/electrician/messages', icon: <MessageSquare className="h-5 w-5" /> },
+  { title: '設定', href: '/electrician/settings', icon: <Settings className="h-5 w-5" /> },
+];
+
 const getNavItems = (role: UserRole): NavItem[] => {
   switch (role) {
     case 'admin':
@@ -82,6 +94,8 @@ const getNavItems = (role: UserRole): NavItem[] => {
       return memberNavItems;
     case 'partner':
       return partnerNavItems;
+    case 'electrician':
+      return electricianNavItems;
     default:
       return [];
   }

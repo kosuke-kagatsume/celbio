@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 
-export type UserRole = 'admin' | 'member' | 'partner'
+export type UserRole = 'admin' | 'member' | 'partner' | 'electrician'
 
 export interface AuthUser {
   id: string
@@ -91,6 +91,8 @@ export function getRoleDashboard(role: UserRole): string {
       return '/member/dashboard'
     case 'partner':
       return '/partner/dashboard'
+    case 'electrician':
+      return '/electrician/dashboard'
     default:
       return '/login'
   }
@@ -107,6 +109,8 @@ export function getRolePrefix(role: UserRole): string {
       return '/member'
     case 'partner':
       return '/partner'
+    case 'electrician':
+      return '/electrician'
     default:
       return ''
   }
