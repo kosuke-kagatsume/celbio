@@ -40,6 +40,7 @@ interface NavItem {
 
 const adminNavItems: NavItem[] = [
   { title: 'ダッシュボード', href: '/admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { title: '案件管理', href: '/admin/projects', icon: <MapPin className="h-5 w-5" /> },
   { title: '見積管理', href: '/admin/quotes', icon: <FileText className="h-5 w-5" /> },
   { title: '発注管理', href: '/admin/orders', icon: <ShoppingCart className="h-5 w-5" /> },
   { title: '請求書管理', href: '/admin/invoices', icon: <Receipt className="h-5 w-5" /> },
@@ -56,6 +57,7 @@ const adminNavItems: NavItem[] = [
 
 const memberNavItems: NavItem[] = [
   { title: 'ダッシュボード', href: '/member/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { title: '案件管理', href: '/member/projects', icon: <MapPin className="h-5 w-5" /> },
   { title: '見積依頼', href: '/member/quotes', icon: <FileText className="h-5 w-5" /> },
   { title: '発注', href: '/member/orders', icon: <ShoppingCart className="h-5 w-5" /> },
   { title: '請求書', href: '/member/invoices', icon: <Receipt className="h-5 w-5" /> },
