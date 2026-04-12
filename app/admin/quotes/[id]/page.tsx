@@ -1,24 +1,13 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { QuoteStatusBadge } from '@/components/quotes/quote-status-badge'
 import { QuoteItemsTable } from '@/components/quotes/quote-items-table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { ArrowLeft, Send, CheckCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calculator, Building2, Loader2 } from 'lucide-react'
 
 interface QuoteDetail {
   id: string
@@ -26,11 +15,13 @@ interface QuoteDetail {
   title: string | null
   description: string | null
   status: string
+  totalAmount: string | null
   memberTotalAmount: string | null
   deliveryAddress: string | null
   desiredDate: string | null
   createdAt: string
   approvedAt: string | null
+  member: { id: string; name: string }
   user: { id: string; name: string }
   category: { id: string; name: string }
   project: { id: string; projectNumber: string; clientName: string; address: string | null } | null
@@ -40,6 +31,8 @@ interface QuoteDetail {
     specification: string | null
     quantity: string | null
     unit: string | null
+    unitPrice: string | null
+    subtotal: string | null
     memberUnitPrice: string | null
     memberSubtotal: string | null
     status: string | null
@@ -49,51 +42,33 @@ interface QuoteDetail {
   files: Array<{ id: string; fileName: string; fileUrl: string; fileType: string | null }>
 }
 
-export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
+export default function AdminQuoteDetailPage() {
+  const { id } = useParams<{ id: string }>()
   const [quote, setQuote] = useState<QuoteDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isApproving, setIsApproving] = useState(false)
+  const [isCalculating, setIsCalculating] = useState(false)
 
-  useEffect(() => {
+  const fetchQuote = () => {
     fetch(`/api/quotes/${id}`)
       .then((res) => res.ok ? res.json() : null)
       .then((data) => setQuote(data))
       .finally(() => setIsLoading(false))
-  }, [id])
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true)
-    try {
-      const res = await fetch(`/api/quotes/${id}/submit`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        setQuote(data)
-      } else {
-        const err = await res.json()
-        alert(err.error || 'エラーが発生しました')
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
   }
 
-  const handleApprove = async () => {
-    setIsApproving(true)
+  useEffect(() => { fetchQuote() }, [id])
+
+  const handleRecalculate = async () => {
+    setIsCalculating(true)
     try {
-      const res = await fetch(`/api/quotes/${id}/approve`, { method: 'POST' })
+      const res = await fetch(`/api/quotes/${id}/calculate`, { method: 'POST' })
       if (res.ok) {
-        const data = await res.json()
-        alert(`見積を承認しました。発注番号: ${data.order.orderNumber}`)
-        router.push('/member/orders')
+        fetchQuote()
       } else {
         const err = await res.json()
         alert(err.error || 'エラーが発生しました')
       }
     } finally {
-      setIsApproving(false)
+      setIsCalculating(false)
     }
   }
 
@@ -105,15 +80,12 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
     return <p className="text-center py-12 text-gray-500">見積が見つかりません</p>
   }
 
-  const displayAmount = quote.memberTotalAmount
-    ? `¥${Number(quote.memberTotalAmount).toLocaleString('ja-JP')}`
-    : '-'
+  const formatAmount = (v: string | null) => v ? `¥${Number(v).toLocaleString('ja-JP')}` : '-'
 
   return (
     <div>
-      {/* ヘッダー */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/member/quotes">
+        <Link href="/admin/quotes">
           <Button variant="ghost" size="icon" className="h-10 w-10">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -128,9 +100,36 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="space-y-4">
+        {/* 加盟店 */}
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-gray-400" />
+            <div>
+              <p className="text-sm text-gray-400">加盟店</p>
+              <p className="font-medium">{quote.member.name}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 金額（原価 + マージン込み） */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p className="text-sm text-gray-400">原価合計</p>
+                <p className="text-lg font-bold">{formatAmount(quote.totalAmount)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">売価合計（マージン込）</p>
+                <p className="text-lg font-bold text-blue-600">{formatAmount(quote.memberTotalAmount)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 案件情報 */}
         {quote.project && (
-          <Link href={`/member/projects/${quote.project.id}`}>
+          <Link href={`/admin/projects/${quote.project.id}`}>
             <Card className="hover:bg-gray-50">
               <CardContent className="p-4">
                 <p className="text-xs text-gray-400">案件</p>
@@ -139,14 +138,6 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
             </Card>
           </Link>
         )}
-
-        {/* 合計金額 */}
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-gray-400">見積金額（税抜）</p>
-            <p className="text-2xl font-bold mt-1">{displayAmount}</p>
-          </CardContent>
-        </Card>
 
         {/* 基本情報 */}
         <Card>
@@ -157,20 +148,23 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
             {quote.deliveryAddress && <InfoRow label="納品先" value={quote.deliveryAddress} />}
             {quote.desiredDate && <InfoRow label="希望納期" value={new Date(quote.desiredDate).toLocaleDateString('ja-JP')} />}
             <InfoRow label="作成日" value={new Date(quote.createdAt).toLocaleDateString('ja-JP')} />
-            {quote.description && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1">依頼内容</p>
-                <p className="text-sm whitespace-pre-wrap">{quote.description}</p>
-              </div>
-            )}
+            {quote.approvedAt && <InfoRow label="承認日" value={new Date(quote.approvedAt).toLocaleDateString('ja-JP')} />}
           </CardContent>
         </Card>
 
         {/* 明細 */}
         <Card>
-          <CardHeader><CardTitle className="text-lg">見積明細 ({quote.items.length})</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">見積明細 ({quote.items.length})</CardTitle>
+              <Button variant="outline" size="sm" onClick={handleRecalculate} disabled={isCalculating}>
+                {isCalculating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Calculator className="mr-1 h-3 w-3" />}
+                再計算
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent>
-            <QuoteItemsTable items={quote.items} role="member" />
+            <QuoteItemsTable items={quote.items} role="admin" />
           </CardContent>
         </Card>
 
@@ -183,45 +177,11 @@ export default function MemberQuoteDetailPage({ params }: { params: Promise<{ id
                 <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
                    className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm text-blue-600">
                   {f.fileName}
-                  {f.fileType && <span className="ml-2 text-gray-400">({f.fileType})</span>}
                 </a>
               ))}
             </CardContent>
           </Card>
         )}
-
-        {/* アクション */}
-        <div className="space-y-3 pb-4">
-          {quote.status === 'draft' && (
-            <Button className="w-full min-h-12" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              見積依頼を送信
-            </Button>
-          )}
-          {quote.status === 'responded' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="w-full min-h-12" disabled={isApproving}>
-                  {isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                  見積を承認・発注
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>見積の承認</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    この見積を承認し、発注を作成しますか？<br />
-                    合計金額: {displayAmount}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleApprove}>承認して発注</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
       </div>
     </div>
   )

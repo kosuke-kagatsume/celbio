@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { calculateQuoteMargins } from '@/lib/margin';
 
 // メーカーが見積回答（価格入力）
 export async function POST(
@@ -97,6 +98,12 @@ export async function POST(
         });
       }
     });
+
+    // 全明細回答済みならマージン自動計算を実行
+    const refreshedQuote = await prisma.quote.findUnique({ where: { id }, select: { status: true } });
+    if (refreshedQuote?.status === 'responded') {
+      await calculateQuoteMargins(id);
+    }
 
     // 更新後の見積を取得
     const updatedQuote = await prisma.quote.findUnique({

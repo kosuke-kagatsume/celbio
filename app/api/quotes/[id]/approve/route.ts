@@ -82,22 +82,27 @@ export async function POST(
         },
       });
 
-      // 発注を作成
+      // 発注を作成（前入金確認前なので draft ステータス）
+      // totalAmount はマージン込み価格（memberTotalAmount）を使用
+      const memberTotal = quote.memberTotalAmount
+        ? parseFloat(quote.memberTotalAmount.toString())
+        : parseFloat(quote.totalAmount?.toString() ?? '0');
+
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
+          projectId: quote.projectId,
           memberId: user.memberId!,
           userId: user.id,
           quoteId: id,
-          status: 'ordered',
+          status: 'draft',
           deliveryAddress: quote.deliveryAddress || '',
           desiredDate: quote.desiredDate,
-          totalAmount: quote.totalAmount!,
-          orderedAt: new Date(),
+          totalAmount: memberTotal,
         },
       });
 
-      // 発注明細を作成
+      // 発注明細を作成（マージン込み価格）
       for (const item of quote.items) {
         await tx.orderItem.create({
           data: {
@@ -109,10 +114,18 @@ export async function POST(
             specification: item.specification,
             quantity: item.quantity!,
             unit: item.unit,
-            unitPrice: item.unitPrice!,
-            subtotal: item.subtotal!,
+            unitPrice: item.memberUnitPrice ?? item.unitPrice!,
+            subtotal: item.memberSubtotal ?? item.subtotal!,
             status: 'pending',
           },
+        });
+      }
+
+      // 案件ステータスを「承認済」に更新
+      if (quote.projectId) {
+        await tx.project.update({
+          where: { id: quote.projectId },
+          data: { status: 'approved', approvedAt: new Date() },
         });
       }
 

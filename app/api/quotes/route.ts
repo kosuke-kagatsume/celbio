@@ -54,8 +54,37 @@ export async function GET(request: NextRequest) {
       prisma.quote.count({ where: whereClause }),
     ]);
 
+    // ロール別の価格隠蔽
+    const sanitizedQuotes = quotes.map((q) => {
+      if (user.role === 'member') {
+        return {
+          ...q,
+          totalAmount: undefined,
+          items: q.items.map((item) => ({
+            ...item,
+            unitPrice: undefined,
+            subtotal: undefined,
+          })),
+        }
+      }
+      if (user.role === 'partner') {
+        return {
+          ...q,
+          memberTotalAmount: undefined,
+          items: q.items
+            .filter((item) => item.partnerId === user.partnerId)
+            .map((item) => ({
+              ...item,
+              memberUnitPrice: undefined,
+              memberSubtotal: undefined,
+            })),
+        }
+      }
+      return q
+    })
+
     return NextResponse.json({
-      quotes,
+      quotes: sanitizedQuotes,
       pagination: {
         page,
         limit,

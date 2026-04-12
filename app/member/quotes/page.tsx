@@ -1,189 +1,103 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Plus, FileText, Eye, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { QuoteList } from '@/components/quotes/quote-list'
+import { QUOTE_STATUSES } from '@/lib/quotes'
+import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
-interface Quote {
-  id: string;
-  quoteNumber: string;
-  title: string | null;
-  status: string;
-  totalAmount: string | null;
-  desiredDate: string | null;
-  createdAt: string;
-  category: { id: string; name: string };
-  items: Array<{ partner: { name: string } }>;
-  _count: { files: number };
+interface QuoteItem {
+  id: string
+  quoteNumber: string
+  title: string | null
+  status: string
+  memberTotalAmount: string | null
+  createdAt: string
+  category: { id: string; name: string }
+  project: { id: string; projectNumber: string; clientName: string } | null
 }
 
-const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  draft: { label: '下書き', variant: 'secondary' },
-  requested: { label: '依頼中', variant: 'default' },
-  responded: { label: '回答済み', variant: 'outline' },
-  approved: { label: '承認済み', variant: 'default' },
-  rejected: { label: '却下', variant: 'destructive' },
-};
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
 
 export default function MemberQuotesPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [quotes, setQuotes] = useState<QuoteItem[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [status, setStatus] = useState('')
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
-    fetchQuotes();
-  }, [statusFilter]);
+    fetchQuotes()
+  }, [status, page])
 
   const fetchQuotes = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') {
-        params.append('status', statusFilter);
+      const params = new URLSearchParams()
+      if (status) params.set('status', status)
+      params.set('page', String(page))
+
+      const res = await fetch(`/api/quotes?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setQuotes(data.quotes)
+        setPagination(data.pagination)
       }
-      const response = await fetch(`/api/quotes?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setQuotes(data.quotes);
-      }
-    } catch (error) {
-      console.error('Error fetching quotes:', error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ja-JP');
-  };
-
-  const formatCurrency = (amount: string | null) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency: 'JPY',
-    }).format(parseFloat(amount));
-  };
-
-  const getPartnerNames = (items: Quote['items']) => {
-    const names = [...new Set(items.map(item => item.partner.name))];
-    return names.join(', ');
-  };
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div>
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">見積一覧</h1>
-          <p className="text-muted-foreground">見積依頼の管理</p>
+          <h1 className="text-2xl font-bold">見積依頼</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            見積一覧 {pagination ? `(${pagination.total}件)` : ''}
+          </p>
         </div>
         <Link href="/member/quotes/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            新規見積依頼
-          </Button>
+          <Button className="min-h-12">新規依頼</Button>
         </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              見積一覧
-            </CardTitle>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="ステータス" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">すべて</SelectItem>
-                <SelectItem value="draft">下書き</SelectItem>
-                <SelectItem value="requested">依頼中</SelectItem>
-                <SelectItem value="responded">回答済み</SelectItem>
-                <SelectItem value="approved">承認済み</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : quotes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              見積がありません
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>見積番号</TableHead>
-                  <TableHead>タイトル</TableHead>
-                  <TableHead>カテゴリ</TableHead>
-                  <TableHead>メーカー</TableHead>
-                  <TableHead>ステータス</TableHead>
-                  <TableHead className="text-right">金額</TableHead>
-                  <TableHead>希望納期</TableHead>
-                  <TableHead>作成日</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quotes.map((quote) => (
-                  <TableRow key={quote.id}>
-                    <TableCell className="font-medium">
-                      {quote.quoteNumber}
-                    </TableCell>
-                    <TableCell>{quote.title || '-'}</TableCell>
-                    <TableCell>{quote.category.name}</TableCell>
-                    <TableCell className="max-w-[150px] truncate">
-                      {getPartnerNames(quote.items)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusLabels[quote.status]?.variant || 'secondary'}>
-                        {statusLabels[quote.status]?.label || quote.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(quote.totalAmount)}
-                    </TableCell>
-                    <TableCell>{formatDate(quote.desiredDate)}</TableCell>
-                    <TableCell>{formatDate(quote.createdAt)}</TableCell>
-                    <TableCell>
-                      <Link href={`/member/quotes/${quote.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="mb-4">
+        <Select value={status} onValueChange={(v) => { setStatus(v === 'all' ? '' : v); setPage(1) }}>
+          <SelectTrigger className="min-h-12">
+            <SelectValue placeholder="ステータスで絞り込み" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全て</SelectItem>
+            {Object.entries(QUOTE_STATUSES).map(([key, label]) => (
+              <SelectItem key={key} value={key}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <QuoteList quotes={quotes} basePath="/member/quotes" role="member" />
+      )}
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>前へ</Button>
+          <span className="flex items-center text-sm text-gray-500">{page} / {pagination.totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)}>次へ</Button>
+        </div>
+      )}
     </div>
-  );
+  )
 }

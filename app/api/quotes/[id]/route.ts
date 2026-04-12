@@ -51,6 +51,34 @@ export async function GET(
       }
     }
 
+    // member: 原価を隠す（マージン込み価格のみ表示）
+    if (user.role === 'member') {
+      return NextResponse.json({
+        ...quote,
+        totalAmount: undefined,
+        items: quote.items.map((item) => ({
+          ...item,
+          unitPrice: undefined,
+          subtotal: undefined,
+        })),
+      });
+    }
+
+    // partner: member価格を隠す（自社の明細のみ表示）
+    if (user.role === 'partner') {
+      return NextResponse.json({
+        ...quote,
+        memberTotalAmount: undefined,
+        items: quote.items
+          .filter((item) => item.partnerId === user.partnerId)
+          .map((item) => ({
+            ...item,
+            memberUnitPrice: undefined,
+            memberSubtotal: undefined,
+          })),
+      });
+    }
+
     return NextResponse.json(quote);
   } catch (error) {
     console.error('Error fetching quote:', error);

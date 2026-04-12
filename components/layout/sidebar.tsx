@@ -22,6 +22,7 @@ import {
   Wrench,
   MapPin,
   X,
+  Percent,
 } from 'lucide-react';
 import type { UserRole } from '@/lib/auth';
 
@@ -49,6 +50,7 @@ const adminNavItems: NavItem[] = [
   { title: '加盟店管理', href: '/admin/members', icon: <Building2 className="h-5 w-5" /> },
   { title: 'メーカー管理', href: '/admin/partners', icon: <Factory className="h-5 w-5" /> },
   { title: '商材管理', href: '/admin/products', icon: <Package className="h-5 w-5" /> },
+  { title: 'マージン係数', href: '/admin/margin-rates', icon: <Percent className="h-5 w-5" /> },
   { title: 'ユーザー管理', href: '/admin/users', icon: <Users className="h-5 w-5" /> },
   { title: '問い合わせ', href: '/admin/messages', icon: <MessageSquare className="h-5 w-5" /> },
   { title: 'レポート', href: '/admin/reports', icon: <BarChart3 className="h-5 w-5" /> },
