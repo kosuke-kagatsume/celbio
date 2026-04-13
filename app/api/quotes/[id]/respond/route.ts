@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { calculateQuoteMargins } from '@/lib/margin';
+import { notifyQuoteAnswered } from '@/lib/notifications';
 
 // メーカーが見積回答（価格入力）
 export async function POST(
@@ -103,6 +104,11 @@ export async function POST(
     const refreshedQuote = await prisma.quote.findUnique({ where: { id }, select: { status: true } });
     if (refreshedQuote?.status === 'responded') {
       await calculateQuoteMargins(id);
+    }
+
+    // 回答完了時に通知
+    if (refreshedQuote?.status === 'responded') {
+      notifyQuoteAnswered(id)
     }
 
     // 更新後の見積を取得

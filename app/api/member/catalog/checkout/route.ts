@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { calcItemMemberPrice } from '@/lib/margin'
+import { notifyOrderCreated } from '@/lib/notifications'
 
 // カート発注（Type A商品のみ・サーバー側価格検証）
 export async function POST(request: NextRequest) {
@@ -126,6 +127,8 @@ export async function POST(request: NextRequest) {
 
       return newOrder
     })
+
+    notifyOrderCreated(order.id)
 
     return NextResponse.json(
       { orderId: order.id, orderNumber: order.orderNumber, totalAmount },

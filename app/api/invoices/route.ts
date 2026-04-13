@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { notifyInvoiceIssued } from '@/lib/notifications';
 
 // 請求書一覧取得
 export async function GET(request: NextRequest) {
@@ -167,6 +168,8 @@ export async function POST(request: NextRequest) {
       where: { id: orderId },
       data: { status: 'invoiced' },
     });
+
+    notifyInvoiceIssued(invoice.id)
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {

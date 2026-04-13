@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
+import { notifyPaymentReceived } from '@/lib/notifications';
 
 // 自動マッチング実行
 export async function POST() {
@@ -208,6 +209,11 @@ export async function POST() {
       });
 
       createdPayments.push(payment);
+    }
+
+    // マッチ成功分の通知
+    for (const payment of createdPayments) {
+      notifyPaymentReceived(payment.id, '自動マッチング')
     }
 
     return NextResponse.json({

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Building2, LogOut, User, Menu } from 'lucide-react';
+import { Building2, LogOut, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,8 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -39,6 +39,8 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         return '/member/dashboard';
       case 'partner':
         return '/partner/dashboard';
+      case 'electrician':
+        return '/electrician/dashboard';
       default:
         return '/';
     }
@@ -52,6 +54,8 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         return user.memberName || '加盟店';
       case 'partner':
         return user.partnerName || 'メーカー';
+      case 'electrician':
+        return user.partnerName || '施工パートナー';
       default:
         return '';
     }
@@ -65,6 +69,8 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         return 'bg-blue-100 text-blue-600';
       case 'partner':
         return 'bg-green-100 text-green-600';
+      case 'electrician':
+        return 'bg-orange-100 text-orange-600';
       default:
         return 'bg-gray-100 text-gray-600';
     }
@@ -92,26 +98,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
 
         <div className="flex items-center gap-2 sm:gap-4">
           {/* 通知 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  0
-                </Badge>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>通知</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="p-4 text-center text-sm text-gray-500">
-                通知はありません
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationBell rolePrefix={`/${user.role === 'electrician' ? 'electrician' : user.role}`} />
 
           {/* ユーザーメニュー */}
           <DropdownMenu>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { fetchAllTransactions, parseTransaction } from '@/lib/gmo-aozora'
+import { notifyBankTransactionSynced } from '@/lib/notifications'
 
 // GMOあおぞらAPIから取引データを同期
 export async function POST(request: NextRequest) {
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
         },
       })
       imported++
+    }
+
+    if (imported > 0) {
+      notifyBankTransactionSynced(imported)
     }
 
     return NextResponse.json({

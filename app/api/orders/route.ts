@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { notifyOrderCreated } from '@/lib/notifications';
 
 // 発注一覧取得
 export async function GET(request: NextRequest) {
@@ -159,6 +160,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    notifyOrderCreated(order.id)
 
     return NextResponse.json(createdOrder, { status: 201 });
   } catch (error) {

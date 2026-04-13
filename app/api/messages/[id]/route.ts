@@ -40,7 +40,7 @@ export async function GET(
     if (user.role === 'member' && thread.memberId !== user.memberId) {
       return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 });
     }
-    if (user.role === 'partner' && thread.partnerId !== user.partnerId) {
+    if ((user.role === 'partner' || user.role === 'electrician') && thread.partnerId !== user.partnerId) {
       return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 });
     }
 

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     if (user.role === 'member') {
       whereClause.memberId = user.memberId;
-    } else if (user.role === 'partner') {
+    } else if (user.role === 'partner' || user.role === 'electrician') {
       whereClause.partnerId = user.partnerId;
     }
     // adminは全て見れる

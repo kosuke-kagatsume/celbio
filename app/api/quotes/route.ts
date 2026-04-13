@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { notifyQuoteRequested } from '@/lib/notifications';
 
 // 見積一覧取得
 export async function GET(request: NextRequest) {
@@ -189,6 +190,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    notifyQuoteRequested(quote.id)
 
     return NextResponse.json(createdQuote, { status: 201 });
   } catch (error) {

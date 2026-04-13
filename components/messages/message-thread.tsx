@@ -49,6 +49,7 @@ const roleLabels: Record<string, string> = {
   admin: 'セリビオ',
   member: '加盟店',
   partner: 'メーカー',
+  electrician: '施工パートナー',
 };
 
 export function MessageThread({ thread, currentUserId, backUrl, onRefresh }: MessageThreadProps) {

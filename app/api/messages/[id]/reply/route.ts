@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
+import { notifyMessageReceived } from '@/lib/notifications';
 
 // メッセージ返信
 export async function POST(
@@ -36,7 +37,7 @@ export async function POST(
     if (user.role === 'member' && thread.memberId !== user.memberId) {
       return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 });
     }
-    if (user.role === 'partner' && thread.partnerId !== user.partnerId) {
+    if ((user.role === 'partner' || user.role === 'electrician') && thread.partnerId !== user.partnerId) {
       return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 });
     }
 
@@ -66,6 +67,8 @@ export async function POST(
       where: { id: threadId },
       data: { updatedAt: new Date() },
     });
+
+    notifyMessageReceived(threadId, user.id)
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {
