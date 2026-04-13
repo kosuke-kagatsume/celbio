@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, Upload, Loader2, Check, X, Zap } from 'lucide-react';
+import { Building2, Upload, Loader2, Check, X, Zap, RefreshCw } from 'lucide-react';
 
 interface BankTransaction {
   id: string;
@@ -58,6 +58,8 @@ export default function BankTransactionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isAutoMatching, setIsAutoMatching] = useState(false);
   const [autoMatchResult, setAutoMatchResult] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -142,6 +144,29 @@ export default function BankTransactionsPage() {
     }
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const response = await fetch('/api/admin/bank-transactions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setSyncResult(`${result.imported}件取込、${result.skipped}件スキップ（${result.dateFrom}〜${result.dateTo}）`);
+        fetchTransactions();
+      } else {
+        setSyncResult(result.error || 'API同期に失敗しました');
+      }
+    } catch {
+      setSyncResult('API同期に失敗しました');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleImport = async () => {
     const transactions = parseCSV(csvData);
     if (transactions.length === 0) {
@@ -183,6 +208,14 @@ export default function BankTransactionsPage() {
           <p className="text-muted-foreground">入金データのインポートと確認</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+            {isSyncing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            API同期
+          </Button>
           <Button variant="outline" onClick={handleAutoMatch} disabled={isAutoMatching}>
             {isAutoMatching ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -242,6 +275,13 @@ export default function BankTransactionsPage() {
           </Dialog>
         </div>
       </div>
+
+      {syncResult && (
+        <div className={`p-4 rounded-lg ${syncResult.includes('失敗') ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+          <RefreshCw className="inline mr-2 h-4 w-4" />
+          {syncResult}
+        </div>
+      )}
 
       {autoMatchResult && (
         <div className={`p-4 rounded-lg ${autoMatchResult.includes('失敗') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
