@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Shield, Building2, Factory, Zap } from 'lucide-react'
+import { Shield, Building2, Factory, HardHat } from 'lucide-react'
 
 const roles = [
   {
@@ -33,10 +33,10 @@ const roles = [
     borderColor: 'border-orange-200',
   },
   {
-    title: '電気工事屋',
-    description: '施工管理・報告',
+    title: '施工パートナー',
+    description: '施工管理・完了報告',
     href: '/login/electrician',
-    icon: <Zap className="h-8 w-8" />,
+    icon: <HardHat className="h-8 w-8" />,
     bgColor: 'bg-yellow-50 hover:bg-yellow-100',
     iconColor: 'text-yellow-600',
     borderColor: 'border-yellow-200',

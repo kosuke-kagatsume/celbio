@@ -123,7 +123,7 @@ export default function AreaMappingsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">エリアマッピング</h1>
-        <p className="text-sm text-gray-500 mt-1">電気工事屋の担当エリア管理</p>
+        <p className="text-sm text-gray-500 mt-1">施工パートナーの担当エリア管理</p>
       </div>
 
       {/* フィルタ */}
@@ -141,7 +141,7 @@ export default function AreaMappingsPage() {
       <div className="border rounded-lg p-4 mb-6 space-y-3">
         <h2 className="text-sm font-bold text-gray-500">{editId ? 'エリアマッピング編集' : '新規追加'}</h2>
         <Select value={form.partnerId || undefined} onValueChange={(v) => setForm({ ...form, partnerId: v })}>
-          <SelectTrigger className="min-h-12"><SelectValue placeholder="電気工事屋を選択" /></SelectTrigger>
+          <SelectTrigger className="min-h-12"><SelectValue placeholder="施工パートナーを選択" /></SelectTrigger>
           <SelectContent>
             {partners.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>

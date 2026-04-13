@@ -47,7 +47,7 @@ export default function ElectricianOrdersPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">受注・施工管理</h1>
+        <h1 className="text-2xl font-bold">施工管理</h1>
         <p className="text-sm text-gray-500 mt-1">
           担当エリアの施工案件 {pagination ? `(${pagination.total}件)` : ''}
         </p>

@@ -37,7 +37,7 @@ const roleErrorMessages: Record<UserRole, string> = {
   admin: 'このアカウントは管理者用ではありません',
   member: 'このアカウントは加盟店用ではありません',
   partner: 'このアカウントはメーカー用ではありません',
-  electrician: 'このアカウントは電気工事屋用ではありません',
+  electrician: 'このアカウントは施工パートナー用ではありません',
 }
 
 export function LoginForm({ title, description, expectedRole, icon, themeColor, testAccounts }: LoginFormProps) {
