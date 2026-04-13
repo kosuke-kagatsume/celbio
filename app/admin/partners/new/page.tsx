@@ -1,19 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewPartnerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialType = searchParams.get('type') || 'manufacturer';
+  const isElectrician = initialType === 'electrician';
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partnerType, setPartnerType] = useState(initialType);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,6 +40,7 @@ export default function NewPartnerPage() {
       bankAccountNumber: formData.get('bankAccountNumber') as string,
       bankAccountName: formData.get('bankAccountName') as string,
       notes: formData.get('notes') as string,
+      partnerType,
     };
 
     try {
@@ -48,7 +55,7 @@ export default function NewPartnerPage() {
         throw new Error(result.error || '登録に失敗しました');
       }
 
-      router.push('/admin/partners');
+      router.push(partnerType === 'electrician' ? '/admin/contractors' : '/admin/partners');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : '登録に失敗しました');
@@ -59,17 +66,17 @@ export default function NewPartnerPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href="/admin/partners">
+      <Link href={isElectrician ? '/admin/contractors' : '/admin/partners'}>
         <Button variant="ghost" className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          メーカー一覧に戻る
+          {isElectrician ? '施工パートナー一覧に戻る' : 'メーカー一覧に戻る'}
         </Button>
       </Link>
 
       <Card>
         <CardHeader>
-          <CardTitle>新規メーカー登録</CardTitle>
-          <CardDescription>新しいメーカー・パートナーを登録します</CardDescription>
+          <CardTitle>{isElectrician ? '新規施工パートナー登録' : '新規メーカー登録'}</CardTitle>
+          <CardDescription>{isElectrician ? '新しい施工パートナーを登録します' : '新しいメーカー・パートナーを登録します'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -79,9 +86,20 @@ export default function NewPartnerPage() {
               </div>
             )}
 
+            <div className="space-y-2">
+              <Label>パートナー種別 *</Label>
+              <Select value={partnerType} onValueChange={setPartnerType} disabled={isLoading}>
+                <SelectTrigger className="min-h-12"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manufacturer">メーカー</SelectItem>
+                  <SelectItem value="electrician">施工パートナー</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">メーカーコード *</Label>
+                <Label htmlFor="code">{partnerType === 'electrician' ? 'パートナーコード' : 'メーカーコード'} *</Label>
                 <Input
                   id="code"
                   name="code"

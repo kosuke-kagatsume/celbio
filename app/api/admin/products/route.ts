@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
     if (categoryId) {
       where.categoryId = categoryId;
     }
+    const isActiveParam = searchParams.get('isActive');
+    if (isActiveParam !== null) {
+      where.isActive = isActiveParam === 'true';
+    }
+    const partnerId = searchParams.get('partnerId');
+    if (partnerId) {
+      where.partnerId = partnerId;
+    }
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({

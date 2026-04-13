@@ -61,6 +61,7 @@ const adminNavItems: NavItem[] = [
   { title: 'メーカー管理', href: '/admin/partners', icon: <Factory className="h-5 w-5" /> },
   { title: '施工パートナー管理', href: '/admin/contractors', icon: <HardHat className="h-5 w-5" /> },
   { title: '商材管理', href: '/admin/products', icon: <Package className="h-5 w-5" /> },
+  { title: 'カタログ承認', href: '/admin/catalog', icon: <BookOpen className="h-5 w-5" /> },
   { title: 'マージン係数', href: '/admin/margin-rates', icon: <Percent className="h-5 w-5" /> },
   { title: 'エリアマッピング', href: '/admin/area-mappings', icon: <Map className="h-5 w-5" /> },
   { title: 'ユーザー管理', href: '/admin/users', icon: <Users className="h-5 w-5" /> },

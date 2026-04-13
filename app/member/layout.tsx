@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { CartProvider } from '@/components/catalog/cart-provider';
 
 export default async function MemberLayout({
   children,
@@ -8,5 +9,9 @@ export default async function MemberLayout({
 }) {
   const user = await requireRole(['member']);
 
-  return <DashboardLayout user={user}>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout user={user}>
+      <CartProvider>{children}</CartProvider>
+    </DashboardLayout>
+  );
 }

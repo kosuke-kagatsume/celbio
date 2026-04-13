@@ -9,23 +9,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') // manufacturer / electrician
 
+    const includeObj: Record<string, unknown> = {
+      users: { select: { id: true, name: true, email: true } },
+      _count: { select: { products: true, quoteItems: true, orderItems: true } },
+    }
+    // electricianの場合はエリアマッピングも含める
+    if (type === 'electrician') {
+      includeObj.areaMappings = {
+        where: { isActive: true },
+        select: { id: true, prefecture: true, city: true, priority: true },
+        orderBy: { prefecture: 'asc' },
+      }
+    }
+
     const partners = await prisma.partner.findMany({
       where: type ? { partnerType: type } : undefined,
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            products: true,
-            quoteItems: true,
-          },
-        },
-      },
+      include: includeObj,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -57,6 +56,7 @@ export async function POST(request: NextRequest) {
       bankAccountNumber,
       bankAccountName,
       notes,
+      partnerType,
     } = body;
 
     // バリデーション
@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
         bankAccountType: bankAccountType || null,
         bankAccountNumber: bankAccountNumber || null,
         bankAccountName: bankAccountName || null,
+        partnerType: partnerType || 'manufacturer',
         notes: notes || null,
         isActive: true,
       },
