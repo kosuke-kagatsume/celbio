@@ -41,7 +41,9 @@ export async function GET(request: NextRequest) {
           user: { select: { id: true, name: true } },
           category: { select: { id: true, name: true, code: true } },
           items: {
-            include: {
+            select: {
+              id: true, partnerId: true, itemName: true, quantity: true, unit: true,
+              unitPrice: true, subtotal: true, memberUnitPrice: true, memberSubtotal: true,
               partner: { select: { id: true, name: true } },
             },
           },

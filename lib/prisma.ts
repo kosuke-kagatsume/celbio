@@ -43,9 +43,9 @@ function createPrismaClient(): PrismaClient {
   // Prisma 7では、PrismaNeonがPoolConfigを受け取り内部でPoolを作成
   const adapter = new PrismaNeon({
     connectionString,
-    max: 1,
-    idleTimeoutMillis: 20000,
-    connectionTimeoutMillis: 10000,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 15000,
   })
 
   const prisma = new PrismaClient({

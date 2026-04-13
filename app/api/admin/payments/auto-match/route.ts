@@ -7,13 +7,14 @@ export async function POST() {
   try {
     await requireRole(['admin']);
 
-    // 未マッチの銀行取引を取得
+    // 未マッチの銀行取引を取得（バッチ処理: 最大100件ずつ）
     const unmatchedTxns = await prisma.bankTransaction.findMany({
       where: { matched: false },
       orderBy: { transactionDate: 'desc' },
+      take: 100,
     });
 
-    // 未払いの請求書を取得
+    // 未払いの請求書を取得（最大200件）
     const unpaidInvoices = await prisma.invoice.findMany({
       where: {
         status: { in: ['issued', 'sent'] },
@@ -22,9 +23,10 @@ export async function POST() {
       include: {
         member: { select: { id: true, name: true, payerName: true } },
       },
+      take: 200,
     });
 
-    // 未払いのおまとめを取得
+    // 未払いのおまとめを取得（最大200件）
     const unpaidBundles = await prisma.invoiceBundle.findMany({
       where: {
         status: { in: ['created', 'sent'] },
@@ -33,6 +35,7 @@ export async function POST() {
       include: {
         member: { select: { id: true, name: true, payerName: true } },
       },
+      take: 200,
     });
 
     const matched: Array<{ txnId: string; invoiceId?: string; bundleId?: string; difference: number }> = [];

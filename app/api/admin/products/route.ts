@@ -2,19 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireRole(['admin']);
 
-    const products = await prisma.product.findMany({
-      include: {
-        category: true,
-        partner: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const search = searchParams.get('search') || '';
+    const categoryId = searchParams.get('categoryId') || '';
 
-    return NextResponse.json(products);
+    const where: Record<string, unknown> = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        select: {
+          id: true, code: true, name: true, unit: true, unitPrice: true,
+          productType: true, isActive: true, createdAt: true,
+          category: { select: { id: true, name: true, code: true } },
+          partner: { select: { id: true, name: true, code: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      products,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

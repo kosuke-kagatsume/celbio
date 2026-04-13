@@ -111,6 +111,10 @@ model User {
   uploadedProjectFiles    ProjectFile[]   @relation("ProjectFileUploader")
   confirmedMemberPayments MemberPayment[] @relation("MemberPaymentConfirmer")
 
+  @@index([supabaseUserId])
+  @@index([role])
+  @@index([memberId])
+  @@index([partnerId])
   @@map("users")
 }
 
@@ -318,6 +322,9 @@ model Quote {
   orders   Order[]
   threads  MessageThread[]
 
+  @@index([memberId])
+  @@index([status])
+  @@index([projectId])
   @@map("quotes")
 }
 
@@ -347,6 +354,8 @@ model QuoteItem {
   product    Product?    @relation(fields: [productId], references: [id])
   orderItems OrderItem[]
 
+  @@index([quoteId])
+  @@index([partnerId])
   @@map("quote_items")
 }
 
@@ -399,6 +408,10 @@ model Order {
   invoices Invoice[]
   threads  MessageThread[]
 
+  @@index([memberId])
+  @@index([status])
+  @@index([projectId])
+  @@index([quoteId])
   @@map("orders")
 }
 
@@ -429,6 +442,8 @@ model OrderItem {
   product   Product?   @relation(fields: [productId], references: [id])
   quoteItem QuoteItem? @relation(fields: [quoteItemId], references: [id])
 
+  @@index([orderId])
+  @@index([partnerId])
   @@map("order_items")
 }
 
@@ -488,6 +503,10 @@ model Invoice {
   bundleInvoices      BundleInvoice[]
   partnerPaymentItems PartnerPaymentItem[]
 
+  @@index([orderId])
+  @@index([partnerId])
+  @@index([memberId])
+  @@index([status])
   @@map("invoices")
 }
 
@@ -549,6 +568,9 @@ model Payment {
   bankTransaction BankTransaction? @relation(fields: [bankTxnId], references: [id])
   approver        User?            @relation("ApprovedBy", fields: [approvedBy], references: [id])
 
+  @@index([invoiceId])
+  @@index([bundleId])
+  @@index([status])
   @@map("payments")
 }
 
@@ -569,6 +591,8 @@ model BankTransaction {
   payments       Payment[]
   memberPayments MemberPayment[]
 
+  @@index([matched])
+  @@index([transactionDate])
   @@map("bank_transactions")
 }
 
@@ -634,6 +658,11 @@ model MessageThread {
   partner  Partner?  @relation(fields: [partnerId], references: [id])
   messages Message[]
 
+  @@index([projectId])
+  @@index([orderId])
+  @@index([memberId])
+  @@index([partnerId])
+  @@index([status])
   @@map("message_threads")
 }
 
@@ -651,6 +680,8 @@ model Message {
   sender User          @relation(fields: [senderId], references: [id])
   files  MessageFile[]
 
+  @@index([threadId])
+  @@index([senderId])
   @@map("messages")
 }
 
@@ -684,6 +715,8 @@ model Notification {
   // Relations
   user User @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([isRead])
   @@map("notifications")
 }
 
@@ -707,6 +740,8 @@ model AuditLog {
   // Relations
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([entityType, entityId])
   @@map("audit_logs")
 }
 

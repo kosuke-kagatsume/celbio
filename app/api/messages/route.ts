@@ -31,28 +31,39 @@ export async function GET(request: NextRequest) {
       whereClause.threadType = threadType;
     }
 
-    const threads = await prisma.messageThread.findMany({
-      where: whereClause,
-      include: {
-        order: { select: { id: true, orderNumber: true } },
-        quote: { select: { id: true, quoteNumber: true } },
-        member: { select: { id: true, name: true } },
-        partner: { select: { id: true, name: true } },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: {
-            sender: { select: { id: true, name: true } },
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    const [threads, total] = await Promise.all([
+      prisma.messageThread.findMany({
+        where: whereClause,
+        include: {
+          order: { select: { id: true, orderNumber: true } },
+          quote: { select: { id: true, quoteNumber: true } },
+          member: { select: { id: true, name: true } },
+          partner: { select: { id: true, name: true } },
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: {
+              sender: { select: { id: true, name: true } },
+            },
+          },
+          _count: {
+            select: { messages: true },
           },
         },
-        _count: {
-          select: { messages: true },
-        },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.messageThread.count({ where: whereClause }),
+    ]);
 
-    return NextResponse.json({ threads });
+    return NextResponse.json({
+      threads,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Error fetching threads:', error);
     return NextResponse.json(

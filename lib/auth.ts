@@ -31,8 +31,8 @@ export async function getUser(): Promise<AuthUser | null> {
   const user = await prisma.user.findUnique({
     where: { supabaseUserId: supabaseUser.id },
     include: {
-      member: true,
-      partner: true,
+      member: { select: { id: true, name: true } },
+      partner: { select: { id: true, name: true } },
     },
   })
 

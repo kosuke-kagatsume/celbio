@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
 
 // 管理者向けレポートデータ取得
 export async function GET(request: NextRequest) {
@@ -23,135 +24,129 @@ export async function GET(request: NextRequest) {
       endDate = new Date(year, 11, 31, 23, 59, 59);
     }
 
-    // 並列でデータ取得
+    // DB集計で取得（全件ロードしない）
     const [
-      orders,
-      invoices,
-      payments,
-      members,
-      partners,
+      orderAgg,
+      invoiceAgg,
+      paymentAgg,
+      activeMembers,
+      activePartners,
+      memberOrderStats,
+      partnerInvoiceStats,
     ] = await Promise.all([
-      // 発注データ
-      prisma.order.findMany({
-        where: {
-          orderedAt: { gte: startDate, lte: endDate },
-        },
-        include: {
-          member: { select: { id: true, name: true } },
-        },
+      // 発注集計
+      prisma.order.aggregate({
+        where: { orderedAt: { gte: startDate, lte: endDate } },
+        _count: true,
+        _sum: { totalAmount: true },
       }),
-      // 請求書データ
-      prisma.invoice.findMany({
-        where: {
-          issuedAt: { gte: startDate, lte: endDate },
-        },
-        include: {
-          partner: { select: { id: true, name: true } },
-          member: { select: { id: true, name: true } },
-        },
+      // 請求書集計
+      prisma.invoice.aggregate({
+        where: { issuedAt: { gte: startDate, lte: endDate } },
+        _count: true,
+        _sum: { totalAmount: true },
       }),
-      // 入金データ
-      prisma.payment.findMany({
+      // 入金集計
+      prisma.payment.aggregate({
         where: {
           createdAt: { gte: startDate, lte: endDate },
           status: { in: ['matched', 'approved'] },
         },
-        include: {
-          invoice: {
-            include: {
-              member: { select: { id: true, name: true } },
-              partner: { select: { id: true, name: true } },
-            },
-          },
-          bundle: {
-            include: {
-              member: { select: { id: true, name: true } },
-            },
-          },
-        },
+        _count: true,
+        _sum: { amount: true },
       }),
       // 加盟店数
       prisma.member.count({ where: { isActive: true } }),
       // メーカー数
       prisma.partner.count({ where: { isActive: true } }),
+      // 加盟店別発注集計
+      prisma.order.groupBy({
+        by: ['memberId'],
+        where: { orderedAt: { gte: startDate, lte: endDate } },
+        _count: true,
+        _sum: { totalAmount: true },
+      }),
+      // メーカー別請求書集計
+      prisma.invoice.groupBy({
+        by: ['partnerId'],
+        where: { issuedAt: { gte: startDate, lte: endDate } },
+        _count: true,
+        _sum: { totalAmount: true },
+      }),
     ]);
 
-    // 集計
-    const totalOrders = orders.length;
-    const totalOrderAmount = orders.reduce(
-      (sum, o) => sum + parseFloat(o.totalAmount.toString()),
-      0
-    );
+    // 加盟店・メーカーの名前を取得
+    const memberIds = memberOrderStats.map((s) => s.memberId);
+    const partnerIds = partnerInvoiceStats.map((s) => s.partnerId);
 
-    const totalInvoices = invoices.length;
-    const totalInvoiceAmount = invoices.reduce(
-      (sum, i) => sum + parseFloat(i.totalAmount.toString()),
-      0
-    );
+    const [memberNames, partnerNames] = await Promise.all([
+      memberIds.length > 0
+        ? prisma.member.findMany({
+            where: { id: { in: memberIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      partnerIds.length > 0
+        ? prisma.partner.findMany({
+            where: { id: { in: partnerIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
 
-    const totalPayments = payments.length;
-    const totalPaymentAmount = payments.reduce(
-      (sum, p) => sum + parseFloat(p.amount.toString()),
-      0
-    );
+    const memberNameMap = new Map(memberNames.map((m) => [m.id, m.name]));
+    const partnerNameMap = new Map(partnerNames.map((p) => [p.id, p.name]));
 
-    // 加盟店別集計
-    const memberStats = new Map<string, { name: string; orders: number; amount: number; payments: number }>();
-    orders.forEach((o) => {
-      const key = o.member.id;
-      const current = memberStats.get(key) || { name: o.member.name, orders: 0, amount: 0, payments: 0 };
-      current.orders++;
-      current.amount += parseFloat(o.totalAmount.toString());
-      memberStats.set(key, current);
-    });
-    payments.forEach((p) => {
-      const memberId = p.invoice?.member?.id || p.bundle?.member?.id;
-      const memberName = p.invoice?.member?.name || p.bundle?.member?.name;
-      if (memberId && memberName) {
-        const current = memberStats.get(memberId) || { name: memberName, orders: 0, amount: 0, payments: 0 };
-        current.payments += parseFloat(p.amount.toString());
-        memberStats.set(memberId, current);
-      }
-    });
+    // 月別推移（年間表示の場合、SQLで集計）
+    let monthlyData: Array<{
+      month: number;
+      orders: number;
+      orderAmount: number;
+      invoices: number;
+      invoiceAmount: number;
+      payments: number;
+      paymentAmount: number;
+    }> = [];
 
-    // メーカー別集計
-    const partnerStats = new Map<string, { name: string; invoices: number; amount: number }>();
-    invoices.forEach((i) => {
-      const key = i.partner.id;
-      const current = partnerStats.get(key) || { name: i.partner.name, invoices: 0, amount: 0 };
-      current.invoices++;
-      current.amount += parseFloat(i.totalAmount.toString());
-      partnerStats.set(key, current);
-    });
-
-    // 月別推移（年間表示の場合）
-    const monthlyData = [];
     if (!month) {
-      for (let m = 0; m < 12; m++) {
-        const mStart = new Date(year, m, 1);
-        const mEnd = new Date(year, m + 1, 0, 23, 59, 59);
+      // 月別集計を並列で取得
+      const [monthlyOrders, monthlyInvoices, monthlyPayments] = await Promise.all([
+        prisma.$queryRaw<Array<{ month: number; count: bigint; total: Prisma.Decimal | null }>>`
+          SELECT EXTRACT(MONTH FROM ordered_at)::int AS month, COUNT(*)::bigint AS count, SUM(total_amount) AS total
+          FROM orders
+          WHERE ordered_at >= ${startDate} AND ordered_at <= ${endDate}
+          GROUP BY EXTRACT(MONTH FROM ordered_at)
+        `,
+        prisma.$queryRaw<Array<{ month: number; count: bigint; total: Prisma.Decimal | null }>>`
+          SELECT EXTRACT(MONTH FROM issued_at)::int AS month, COUNT(*)::bigint AS count, SUM(total_amount) AS total
+          FROM invoices
+          WHERE issued_at >= ${startDate} AND issued_at <= ${endDate}
+          GROUP BY EXTRACT(MONTH FROM issued_at)
+        `,
+        prisma.$queryRaw<Array<{ month: number; count: bigint; total: Prisma.Decimal | null }>>`
+          SELECT EXTRACT(MONTH FROM created_at)::int AS month, COUNT(*)::bigint AS count, SUM(amount) AS total
+          FROM payments
+          WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND status IN ('matched', 'approved')
+          GROUP BY EXTRACT(MONTH FROM created_at)
+        `,
+      ]);
 
-        const mOrders = orders.filter((o) => {
-          const d = new Date(o.orderedAt!);
-          return d >= mStart && d <= mEnd;
-        });
-        const mInvoices = invoices.filter((i) => {
-          const d = new Date(i.issuedAt!);
-          return d >= mStart && d <= mEnd;
-        });
-        const mPayments = payments.filter((p) => {
-          const d = new Date(p.createdAt);
-          return d >= mStart && d <= mEnd;
-        });
+      const orderByMonth = new Map(monthlyOrders.map((r) => [r.month, r]));
+      const invoiceByMonth = new Map(monthlyInvoices.map((r) => [r.month, r]));
+      const paymentByMonth = new Map(monthlyPayments.map((r) => [r.month, r]));
 
+      for (let m = 1; m <= 12; m++) {
+        const o = orderByMonth.get(m);
+        const i = invoiceByMonth.get(m);
+        const p = paymentByMonth.get(m);
         monthlyData.push({
-          month: m + 1,
-          orders: mOrders.length,
-          orderAmount: mOrders.reduce((s, o) => s + parseFloat(o.totalAmount.toString()), 0),
-          invoices: mInvoices.length,
-          invoiceAmount: mInvoices.reduce((s, i) => s + parseFloat(i.totalAmount.toString()), 0),
-          payments: mPayments.length,
-          paymentAmount: mPayments.reduce((s, p) => s + parseFloat(p.amount.toString()), 0),
+          month: m,
+          orders: o ? Number(o.count) : 0,
+          orderAmount: o?.total ? parseFloat(o.total.toString()) : 0,
+          invoices: i ? Number(i.count) : 0,
+          invoiceAmount: i?.total ? parseFloat(i.total.toString()) : 0,
+          payments: p ? Number(p.count) : 0,
+          paymentAmount: p?.total ? parseFloat(p.total.toString()) : 0,
         });
       }
     }
@@ -159,22 +154,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       period: { year, month },
       summary: {
-        totalOrders,
-        totalOrderAmount,
-        totalInvoices,
-        totalInvoiceAmount,
-        totalPayments,
-        totalPaymentAmount,
-        activeMembers: members,
-        activePartners: partners,
+        totalOrders: orderAgg._count,
+        totalOrderAmount: orderAgg._sum.totalAmount ? parseFloat(orderAgg._sum.totalAmount.toString()) : 0,
+        totalInvoices: invoiceAgg._count,
+        totalInvoiceAmount: invoiceAgg._sum.totalAmount ? parseFloat(invoiceAgg._sum.totalAmount.toString()) : 0,
+        totalPayments: paymentAgg._count,
+        totalPaymentAmount: paymentAgg._sum.amount ? parseFloat(paymentAgg._sum.amount.toString()) : 0,
+        activeMembers,
+        activePartners,
       },
-      memberStats: Array.from(memberStats.entries()).map(([id, data]) => ({
-        id,
-        ...data,
+      memberStats: memberOrderStats.map((s) => ({
+        id: s.memberId,
+        name: memberNameMap.get(s.memberId) || '',
+        orders: s._count,
+        amount: s._sum.totalAmount ? parseFloat(s._sum.totalAmount.toString()) : 0,
       })),
-      partnerStats: Array.from(partnerStats.entries()).map(([id, data]) => ({
-        id,
-        ...data,
+      partnerStats: partnerInvoiceStats.map((s) => ({
+        id: s.partnerId,
+        name: partnerNameMap.get(s.partnerId) || '',
+        invoices: s._count,
+        amount: s._sum.totalAmount ? parseFloat(s._sum.totalAmount.toString()) : 0,
       })),
       monthlyData,
     });

@@ -2,30 +2,45 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireRole(['admin']);
 
-    const members = await prisma.member.findMany({
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            quotes: true,
-            orders: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const search = searchParams.get('search') || '';
 
-    return NextResponse.json(members);
+    const where: Record<string, unknown> = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        include: {
+          users: {
+            select: { id: true, name: true, email: true },
+          },
+          _count: {
+            select: { quotes: true, orders: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      members,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Error fetching members:', error);
     return NextResponse.json(

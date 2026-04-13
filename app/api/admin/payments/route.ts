@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
               member: { select: { id: true, name: true } },
             },
           },
-          bankTransaction: true,
+          bankTransaction: { select: { id: true, amount: true, senderName: true, transactionDate: true } },
           approver: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
