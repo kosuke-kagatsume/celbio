@@ -1,15 +1,8 @@
 import { prisma } from '@/lib/prisma'
 
-/** 見積ステータス定義 */
-export const QUOTE_STATUSES = {
-  draft: '下書き',
-  requested: '見積依頼中',
-  responded: '回答済',
-  approved: '承認済',
-  rejected: '却下',
-} as const
-
-export type QuoteStatus = keyof typeof QUOTE_STATUSES
+// 定数・型はクライアントでも使えるようにquote-constants.tsに分離
+export { QUOTE_STATUSES } from '@/lib/quote-constants'
+export type { QuoteStatus } from '@/lib/quote-constants'
 
 /**
  * 見積番号を自動生成（Q{YYYYMMDD}-{NNNN}）

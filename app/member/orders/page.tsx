@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { OrderList } from '@/components/orders/order-list'
-import { ORDER_STATUSES } from '@/lib/orders'
+import { ORDER_STATUSES } from '@/lib/order-constants'
 import { Loader2 } from 'lucide-react'
 
 interface OrderItem {

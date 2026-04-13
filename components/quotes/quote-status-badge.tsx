@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { QUOTE_STATUSES, type QuoteStatus } from '@/lib/quotes'
+import { QUOTE_STATUSES, type QuoteStatus } from '@/lib/quote-constants'
 
 const STATUS_COLORS: Record<QuoteStatus, string> = {
   draft: 'bg-gray-100 text-gray-700',

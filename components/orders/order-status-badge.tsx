@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { ORDER_STATUSES, type OrderStatus } from '@/lib/orders'
+import { ORDER_STATUSES, type OrderStatus } from '@/lib/order-constants'
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   draft: 'bg-gray-100 text-gray-700',

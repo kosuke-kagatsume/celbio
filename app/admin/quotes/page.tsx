@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { QuoteList } from '@/components/quotes/quote-list'
-import { QUOTE_STATUSES } from '@/lib/quotes'
+import { QUOTE_STATUSES } from '@/lib/quote-constants'
 import { Loader2 } from 'lucide-react'
 
 interface QuoteItem {
