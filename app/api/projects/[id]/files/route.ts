@@ -59,9 +59,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ...projectFile, url }, { status: 201 })
   } catch (error) {
     console.error('Error uploading file:', error)
-    const message = error instanceof Error ? error.message : String(error)
-    const stack = error instanceof Error ? error.stack : undefined
-    return NextResponse.json({ error: 'Internal server error', message, stack }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
