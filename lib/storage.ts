@@ -4,11 +4,10 @@ const BUCKET_NAME = 'project-files'
 
 interface UploadResult {
   path: string
-  url: string
 }
 
 /**
- * ファイルをSupabase Storageにアップロード
+ * ファイルをSupabase Storageにアップロード（pathのみ返却。public URLは発行しない）
  */
 export async function uploadFile(
   file: File,
@@ -16,7 +15,6 @@ export async function uploadFile(
 ): Promise<UploadResult> {
   const supabase = createServiceClient()
 
-  // ユニークなファイルパスを生成
   const ext = file.name.split('.').pop() ?? 'bin'
   const timestamp = Date.now()
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -33,14 +31,7 @@ export async function uploadFile(
     throw new Error(`ファイルアップロード失敗: ${error.message}`)
   }
 
-  const { data: urlData } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(path)
-
-  return {
-    path,
-    url: urlData.publicUrl,
-  }
+  return { path }
 }
 
 /**
@@ -73,4 +64,28 @@ export async function getSignedUrl(path: string, expiresIn = 3600): Promise<stri
   }
 
   return data.signedUrl
+}
+
+/**
+ * 複数ファイルの署名付きURLを一括取得（Server Componentで使用）
+ */
+export async function getSignedUrls(paths: string[], expiresIn = 3600): Promise<Map<string, string>> {
+  if (paths.length === 0) return new Map()
+
+  const supabase = createServiceClient()
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .createSignedUrls(paths, expiresIn)
+
+  if (error || !data) {
+    throw new Error(`署名付きURL一括取得失敗: ${error?.message}`)
+  }
+
+  const map = new Map<string, string>()
+  data.forEach((item) => {
+    if (item.path && item.signedUrl) {
+      map.set(item.path, item.signedUrl)
+    }
+  })
+  return map
 }

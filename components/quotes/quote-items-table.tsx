@@ -2,16 +2,18 @@
 
 import type { UserRole } from '@/lib/auth'
 
+type Numeric = string | number | { toString(): string } | null
+
 interface QuoteItemData {
   id: string
   itemName: string
   specification: string | null
-  quantity: string | null
+  quantity: Numeric
   unit: string | null
-  unitPrice?: string | null      // 原価（member非表示）
-  subtotal?: string | null        // 原価小計（member非表示）
-  memberUnitPrice?: string | null // マージン込み単価
-  memberSubtotal?: string | null  // マージン込み小計
+  unitPrice?: Numeric      // 原価（member非表示）
+  subtotal?: Numeric        // 原価小計（member非表示）
+  memberUnitPrice?: Numeric // マージン込み単価
+  memberSubtotal?: Numeric  // マージン込み小計
   status: string | null
   partner: { id: string; name: string }
   product?: { id: string; name: string } | null
@@ -22,9 +24,9 @@ interface QuoteItemsTableProps {
   role: UserRole
 }
 
-function formatPrice(value: string | number | null | undefined): string {
+function formatPrice(value: Numeric | undefined): string {
   if (value == null) return '-'
-  return Number(value).toLocaleString('ja-JP')
+  return Number(value.toString()).toLocaleString('ja-JP')
 }
 
 export function QuoteItemsTable({ items, role }: QuoteItemsTableProps) {
@@ -50,7 +52,7 @@ export function QuoteItemsTable({ items, role }: QuoteItemsTableProps) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {item.quantity != null && (
               <span className="text-gray-500">
-                数量: {Number(item.quantity).toLocaleString('ja-JP')}{item.unit ?? ''}
+                数量: {formatPrice(item.quantity)}{item.unit ?? ''}
               </span>
             )}
 

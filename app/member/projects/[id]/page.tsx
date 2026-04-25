@@ -1,69 +1,32 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
 import { FileListItem } from '@/components/files/file-upload'
 import { FILE_TYPES, type ProjectFileType } from '@/lib/projects'
-import { ArrowLeft, Edit, MapPin, FileText, ShoppingCart, CreditCard, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowLeft, Edit, MapPin, FileText, ShoppingCart, CreditCard } from 'lucide-react'
+import { requireRole } from '@/lib/auth'
+import { getProjectForUser } from '@/lib/projects/get-project'
 
-interface ProjectDetail {
-  id: string
-  projectNumber: string
-  clientName: string
-  clientNameKana: string | null
-  postalCode: string | null
-  address: string | null
-  addressDetail: string | null
-  latitude: number | null
-  longitude: number | null
-  buildingType: string | null
-  roofType: string | null
-  notes: string | null
-  status: string
-  createdAt: string
-  member: { id: string; name: string }
-  createdByUser: { id: string; name: string }
-  files: Array<{ id: string; fileName: string; fileSize: number | null; fileUrl: string; fileType: string }>
-  quotes: Array<{ id: string; quoteNumber: string; status: string; totalAmount: string | null; createdAt: string }>
-  orders: Array<{ id: string; orderNumber: string; status: string; totalAmount: string; createdAt: string }>
-  memberPayments: Array<{ id: string; amount: string; status: string; paymentType: string; confirmedAt: string | null }>
-}
+export default async function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const user = await requireRole(['member'])
+  const { id } = await params
+  const result = await getProjectForUser(id, user)
 
-export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const router = useRouter()
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  if (result === null) notFound()
+  if (result === 'forbidden') redirect('/member/projects')
 
-  useEffect(() => {
-    fetch(`/api/projects/${id}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => setProject(data))
-      .finally(() => setIsLoading(false))
-  }, [id])
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (!project) {
-    return <p className="text-center py-12 text-gray-500">案件が見つかりません</p>
-  }
-
+  const project = result
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   const hasCoords = project.latitude != null && project.longitude != null
 
   return (
     <div>
-      {/* ヘッダー */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/member/projects">
           <Button variant="ghost" size="icon" className="h-10 w-10">
@@ -85,37 +48,21 @@ export default function ProjectDetailPage() {
       </div>
 
       <div className="space-y-4">
-        {/* 基本情報 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">基本情報</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {project.clientNameKana && (
-              <InfoRow label="施主名（カナ）" value={project.clientNameKana} />
-            )}
-            {project.postalCode && (
-              <InfoRow label="郵便番号" value={project.postalCode} />
-            )}
-            {project.address && (
-              <InfoRow label="住所" value={project.address} icon={<MapPin className="h-4 w-4" />} />
-            )}
-            {project.addressDetail && (
-              <InfoRow label="補足" value={project.addressDetail} />
-            )}
-            {project.buildingType && (
-              <InfoRow label="建物種別" value={project.buildingType} />
-            )}
-            {project.roofType && (
-              <InfoRow label="屋根形状" value={project.roofType} />
-            )}
-            {project.notes && (
-              <InfoRow label="備考" value={project.notes} />
-            )}
+            {project.clientNameKana && <InfoRow label="施主名（カナ）" value={project.clientNameKana} />}
+            {project.postalCode && <InfoRow label="郵便番号" value={project.postalCode} />}
+            {project.address && <InfoRow label="住所" value={project.address} icon={<MapPin className="h-4 w-4" />} />}
+            {project.addressDetail && <InfoRow label="補足" value={project.addressDetail} />}
+            {project.buildingType && <InfoRow label="建物種別" value={project.buildingType} />}
+            {project.roofType && <InfoRow label="屋根形状" value={project.roofType} />}
+            {project.notes && <InfoRow label="備考" value={project.notes} />}
           </CardContent>
         </Card>
 
-        {/* 地図 */}
         {hasCoords && apiKey && (
           <Card>
             <CardContent className="p-0">
@@ -130,7 +77,6 @@ export default function ProjectDetailPage() {
           </Card>
         )}
 
-        {/* 添付ファイル */}
         {project.files.length > 0 && (
           <Card>
             <CardHeader>
@@ -145,14 +91,13 @@ export default function ProjectDetailPage() {
                   <span className="text-xs text-gray-400 shrink-0">
                     {FILE_TYPES[f.fileType as ProjectFileType] ?? f.fileType}
                   </span>
-                  <FileListItem name={f.fileName} size={f.fileSize} url={f.fileUrl} />
+                  <FileListItem name={f.fileName} size={f.fileSize} url={f.url} />
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
 
-        {/* 見積 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -178,7 +123,6 @@ export default function ProjectDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 発注 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -204,7 +148,6 @@ export default function ProjectDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 入金 */}
         {project.memberPayments.length > 0 && (
           <Card>
             <CardHeader>

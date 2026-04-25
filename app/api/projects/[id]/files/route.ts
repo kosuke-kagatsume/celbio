@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { uploadFile, deleteFile } from '@/lib/storage'
+import { uploadFile, deleteFile, getSignedUrl } from '@/lib/storage'
 import type { ProjectFileType } from '@/lib/projects'
 
 interface RouteParams {
@@ -48,14 +48,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         projectId: id,
         fileType,
         fileName: file.name,
-        fileUrl: result.url,
+        filePath: result.path,
         fileSize: file.size,
         uploadedBy: user.id,
         description,
       },
     })
 
-    return NextResponse.json(projectFile, { status: 201 })
+    const url = await getSignedUrl(projectFile.filePath)
+    return NextResponse.json({ ...projectFile, url }, { status: 201 })
   } catch (error) {
     console.error('Error uploading file:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -90,13 +91,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Storageからパスを抽出して削除
+    // Storageから削除
     try {
-      const url = new URL(projectFile.fileUrl)
-      const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/project-files\/(.+)/)
-      if (pathMatch) {
-        await deleteFile(pathMatch[1])
-      }
+      await deleteFile(projectFile.filePath)
     } catch {
       // Storage削除失敗してもDB削除は続行
     }

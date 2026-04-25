@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
+import { attachSignedUrls } from '@/lib/file-urls';
 
 // スレッド詳細取得
 export async function GET(
@@ -44,7 +45,14 @@ export async function GET(
       return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 });
     }
 
-    return NextResponse.json(thread);
+    const messagesWithUrls = await Promise.all(
+      thread.messages.map(async (m) => ({
+        ...m,
+        files: await attachSignedUrls(m.files),
+      })),
+    );
+
+    return NextResponse.json({ ...thread, messages: messagesWithUrls });
   } catch (error) {
     console.error('Error fetching thread:', error);
     return NextResponse.json(

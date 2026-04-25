@@ -1,58 +1,27 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
 import { FileListItem } from '@/components/files/file-upload'
 import { FILE_TYPES, type ProjectFileType } from '@/lib/projects'
-import { ArrowLeft, MapPin, FileText, ShoppingCart, CreditCard, Building2, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowLeft, MapPin, Building2 } from 'lucide-react'
+import { requireRole } from '@/lib/auth'
+import { getProjectForUser } from '@/lib/projects/get-project'
 
-interface ProjectDetail {
-  id: string
-  projectNumber: string
-  clientName: string
-  clientNameKana: string | null
-  postalCode: string | null
-  address: string | null
-  addressDetail: string | null
-  latitude: number | null
-  longitude: number | null
-  buildingType: string | null
-  roofType: string | null
-  notes: string | null
-  status: string
-  createdAt: string
-  paymentConfirmedAt: string | null
-  member: { id: string; name: string }
-  createdByUser: { id: string; name: string }
-  files: Array<{ id: string; fileName: string; fileSize: number | null; fileUrl: string; fileType: string }>
-  quotes: Array<{ id: string; quoteNumber: string; status: string; totalAmount: string | null; createdAt: string }>
-  orders: Array<{ id: string; orderNumber: string; status: string; totalAmount: string; createdAt: string }>
-  memberPayments: Array<{ id: string; amount: string; status: string; paymentType: string; confirmedAt: string | null }>
-}
+export default async function AdminProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const user = await requireRole(['admin'])
+  const { id } = await params
+  const result = await getProjectForUser(id, user)
 
-export default function AdminProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  if (result === null) notFound()
+  if (result === 'forbidden') redirect('/admin/projects')
 
-  useEffect(() => {
-    fetch(`/api/projects/${id}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => setProject(data))
-      .finally(() => setIsLoading(false))
-  }, [id])
-
-  if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
-  }
-
-  if (!project) {
-    return <p className="text-center py-12 text-gray-500">案件が見つかりません</p>
-  }
+  const project = result
 
   return (
     <div>
@@ -72,7 +41,6 @@ export default function AdminProjectDetailPage() {
       </div>
 
       <div className="space-y-4">
-        {/* 加盟店情報 */}
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <Building2 className="h-5 w-5 text-gray-400" />
@@ -83,7 +51,6 @@ export default function AdminProjectDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 基本情報 */}
         <Card>
           <CardHeader><CardTitle className="text-lg">基本情報</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -101,7 +68,6 @@ export default function AdminProjectDetailPage() {
           </CardContent>
         </Card>
 
-        {/* ファイル */}
         {project.files.length > 0 && (
           <Card>
             <CardHeader><CardTitle className="text-lg">添付ファイル ({project.files.length})</CardTitle></CardHeader>
@@ -109,14 +75,13 @@ export default function AdminProjectDetailPage() {
               {project.files.map((f) => (
                 <div key={f.id} className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 shrink-0">{FILE_TYPES[f.fileType as ProjectFileType] ?? f.fileType}</span>
-                  <FileListItem name={f.fileName} size={f.fileSize} url={f.fileUrl} />
+                  <FileListItem name={f.fileName} size={f.fileSize} url={f.url} />
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
 
-        {/* 見積・発注・入金 */}
         <Card>
           <CardHeader><CardTitle className="text-lg">見積 ({project.quotes.length})</CardTitle></CardHeader>
           <CardContent>

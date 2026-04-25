@@ -21,7 +21,7 @@ interface Message {
   files: Array<{
     id: string;
     fileName: string;
-    fileUrl: string;
+    url: string;
   }>;
 }
 
@@ -160,7 +160,7 @@ export function MessageThread({ thread, currentUserId, backUrl, onRefresh }: Mes
                           {message.files.map((file) => (
                             <a
                               key={file.id}
-                              href={file.fileUrl}
+                              href={file.url}
                               target="_blank"
                               rel="noopener noreferrer"
                               className={`text-xs underline ${isOwn ? 'text-blue-100' : 'text-blue-600'}`}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/lib/auth';
 import { notifyMessageReceived } from '@/lib/notifications';
+import { attachSignedUrls } from '@/lib/file-urls';
 
 // メッセージ返信
 export async function POST(
@@ -70,7 +71,8 @@ export async function POST(
 
     notifyMessageReceived(threadId, user.id)
 
-    return NextResponse.json(message, { status: 201 });
+    const filesWithUrl = await attachSignedUrls(message.files);
+    return NextResponse.json({ ...message, files: filesWithUrl }, { status: 201 });
   } catch (error) {
     console.error('Error creating message:', error);
     return NextResponse.json(

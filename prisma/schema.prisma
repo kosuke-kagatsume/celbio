@@ -176,7 +176,7 @@ model ProjectFile {
   projectId   String   @map("project_id")
   fileType    String   @map("file_type") // drawing / roof / lot_map / photo / other
   fileName    String   @map("file_name")
-  fileUrl     String   @map("file_url")
+  filePath    String   @map("file_path") // Supabase Storage path（bucket private、署名付きURLで配信）
   fileSize    Int?     @map("file_size")
   uploadedBy  String?  @map("uploaded_by")
   description String?  // ファイルの説明
@@ -365,7 +365,7 @@ model QuoteFile {
   quoteId    String   @map("quote_id")
   fileType   String?  @map("file_type") // 配置図/平面図/立面図/その他
   fileName   String   @map("file_name")
-  fileUrl    String   @map("file_url")
+  filePath   String   @map("file_path") // Supabase Storage path
   fileSize   Int?     @map("file_size")
   uploadedBy String?  @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -690,7 +690,7 @@ model MessageFile {
   id        String   @id @default(uuid())
   messageId String   @map("message_id")
   fileName  String   @map("file_name")
-  fileUrl   String   @map("file_url")
+  filePath  String   @map("file_path") // Supabase Storage path
   fileSize  Int?     @map("file_size")
   createdAt DateTime @default(now()) @map("created_at")
 

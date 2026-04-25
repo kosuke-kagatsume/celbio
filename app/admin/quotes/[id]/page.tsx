@@ -1,86 +1,29 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { QuoteStatusBadge } from '@/components/quotes/quote-status-badge'
 import { QuoteItemsTable } from '@/components/quotes/quote-items-table'
-import { ArrowLeft, Calculator, Building2, Loader2, Download } from 'lucide-react'
+import { RecalculateButton } from '@/components/quotes/recalculate-button'
+import { ArrowLeft, Building2, Download } from 'lucide-react'
+import { requireRole } from '@/lib/auth'
+import { getQuoteForUser } from '@/lib/quotes/get-quote'
 
-interface QuoteDetail {
-  id: string
-  quoteNumber: string
-  title: string | null
-  description: string | null
-  status: string
-  totalAmount: string | null
-  memberTotalAmount: string | null
-  deliveryAddress: string | null
-  desiredDate: string | null
-  createdAt: string
-  approvedAt: string | null
-  member: { id: string; name: string }
-  user: { id: string; name: string }
-  category: { id: string; name: string }
-  project: { id: string; projectNumber: string; clientName: string; address: string | null } | null
-  items: Array<{
-    id: string
-    itemName: string
-    specification: string | null
-    quantity: string | null
-    unit: string | null
-    unitPrice: string | null
-    subtotal: string | null
-    memberUnitPrice: string | null
-    memberSubtotal: string | null
-    status: string | null
-    partner: { id: string; name: string }
-    product: { id: string; name: string } | null
-  }>
-  files: Array<{ id: string; fileName: string; fileUrl: string; fileType: string | null }>
-}
+export default async function AdminQuoteDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const user = await requireRole(['admin'])
+  const { id } = await params
+  const result = await getQuoteForUser(id, user)
 
-export default function AdminQuoteDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const [quote, setQuote] = useState<QuoteDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isCalculating, setIsCalculating] = useState(false)
+  if (result === null) notFound()
+  if (result === 'forbidden') redirect('/admin/quotes')
 
-  const fetchQuote = () => {
-    fetch(`/api/quotes/${id}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => setQuote(data))
-      .finally(() => setIsLoading(false))
-  }
-
-  useEffect(() => { fetchQuote() }, [id])
-
-  const handleRecalculate = async () => {
-    setIsCalculating(true)
-    try {
-      const res = await fetch(`/api/quotes/${id}/calculate`, { method: 'POST' })
-      if (res.ok) {
-        fetchQuote()
-      } else {
-        const err = await res.json()
-        alert(err.error || 'エラーが発生しました')
-      }
-    } finally {
-      setIsCalculating(false)
-    }
-  }
-
-  if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
-  }
-
-  if (!quote) {
-    return <p className="text-center py-12 text-gray-500">見積が見つかりません</p>
-  }
-
-  const formatAmount = (v: string | null) => v ? `¥${Number(v).toLocaleString('ja-JP')}` : '-'
+  const quote = result
+  const formatAmount = (v: unknown) =>
+    v != null ? `¥${Number(v).toLocaleString('ja-JP')}` : '-'
 
   return (
     <div>
@@ -100,7 +43,6 @@ export default function AdminQuoteDetailPage() {
       </div>
 
       <div className="space-y-4">
-        {/* 加盟店 */}
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <Building2 className="h-5 w-5 text-gray-400" />
@@ -111,7 +53,6 @@ export default function AdminQuoteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 金額（原価 + マージン込み） */}
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4 text-center">
@@ -127,7 +68,6 @@ export default function AdminQuoteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 案件情報 */}
         {quote.project && (
           <Link href={`/admin/projects/${quote.project.id}`}>
             <Card className="hover:bg-gray-50">
@@ -139,7 +79,6 @@ export default function AdminQuoteDetailPage() {
           </Link>
         )}
 
-        {/* 基本情報 */}
         <Card>
           <CardHeader><CardTitle className="text-lg">基本情報</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -152,15 +91,11 @@ export default function AdminQuoteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 明細 */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">見積明細 ({quote.items.length})</CardTitle>
-              <Button variant="outline" size="sm" onClick={handleRecalculate} disabled={isCalculating}>
-                {isCalculating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Calculator className="mr-1 h-3 w-3" />}
-                再計算
-              </Button>
+              <RecalculateButton quoteId={id} />
             </div>
           </CardHeader>
           <CardContent>
@@ -168,7 +103,6 @@ export default function AdminQuoteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* PDFダウンロード */}
         {['responded', 'approved'].includes(quote.status) && (
           <Button variant="outline" className="w-full min-h-12" asChild>
             <a href={`/api/quotes/${id}/pdf`} download>
@@ -177,13 +111,12 @@ export default function AdminQuoteDetailPage() {
           </Button>
         )}
 
-        {/* 添付ファイル */}
         {quote.files.length > 0 && (
           <Card>
             <CardHeader><CardTitle className="text-lg">添付ファイル</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {quote.files.map((f) => (
-                <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
+                <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer"
                    className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-sm text-blue-600">
                   {f.fileName}
                 </a>

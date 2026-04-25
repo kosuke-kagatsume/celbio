@@ -24,7 +24,7 @@ interface ThreadData {
     content: string
     createdAt: string
     sender: { id: string; name: string; role: string }
-    files: Array<{ id: string; fileName: string; fileUrl: string }>
+    files: Array<{ id: string; fileName: string; url: string }>
   }>
 }
 

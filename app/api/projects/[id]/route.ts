@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidStatusTransition, type ProjectStatus } from '@/lib/projects'
+import { getProjectForUser } from '@/lib/projects/get-project'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -16,38 +17,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params
-
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: {
-        member: { select: { id: true, name: true } },
-        createdByUser: { select: { id: true, name: true } },
-        files: { orderBy: { createdAt: 'desc' } },
-        quotes: {
-          select: { id: true, quoteNumber: true, status: true, totalAmount: true, createdAt: true },
-          orderBy: { createdAt: 'desc' },
-        },
-        orders: {
-          select: { id: true, orderNumber: true, status: true, totalAmount: true, createdAt: true },
-          orderBy: { createdAt: 'desc' },
-        },
-        memberPayments: {
-          select: { id: true, amount: true, status: true, paymentType: true, confirmedAt: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    })
-
-    if (!project) {
+    const result = await getProjectForUser(id, user)
+    if (result === null) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
-
-    // 工務店は自社の案件のみ
-    if (user.role === 'member' && project.memberId !== user.memberId) {
+    if (result === 'forbidden') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-    return NextResponse.json(project)
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error fetching project:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

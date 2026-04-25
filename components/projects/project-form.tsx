@@ -30,7 +30,7 @@ interface UploadedFile {
   id: string
   fileName: string
   fileSize: number | null
-  fileUrl: string
+  url: string
   fileType: string
 }
 
@@ -293,7 +293,7 @@ export function ProjectForm({ initialData, initialFiles, projectId, mode }: Proj
                     key={f.id}
                     name={f.fileName}
                     size={f.fileSize}
-                    url={f.fileUrl}
+                    url={f.url}
                     onDelete={() => handleFileDelete(f.id)}
                   />
                 ))}

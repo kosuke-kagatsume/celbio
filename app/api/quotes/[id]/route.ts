@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { getQuoteForUser } from '@/lib/quotes/get-quote';
 
 // 見積詳細取得
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,72 +15,14 @@ export async function GET(
     }
 
     const { id } = await params;
-
-    const quote = await prisma.quote.findUnique({
-      where: { id },
-      include: {
-        member: { select: { id: true, name: true, code: true, address: true, phone: true } },
-        user: { select: { id: true, name: true, email: true } },
-        category: { select: { id: true, name: true, code: true, flowType: true } },
-        items: {
-          include: {
-            partner: { select: { id: true, name: true, code: true } },
-            product: { select: { id: true, name: true, code: true } },
-          },
-        },
-        files: {
-          include: {
-            uploader: { select: { id: true, name: true } },
-          },
-        },
-      },
-    });
-
-    if (!quote) {
+    const result = await getQuoteForUser(id, user);
+    if (result === null) {
       return NextResponse.json({ error: '見積が見つかりません' }, { status: 404 });
     }
-
-    // アクセス権チェック
-    if (user.role === 'member' && quote.memberId !== user.memberId) {
+    if (result === 'forbidden') {
       return NextResponse.json({ error: 'アクセス権がありません' }, { status: 403 });
     }
-
-    if (user.role === 'partner') {
-      const hasAccess = quote.items.some(item => item.partnerId === user.partnerId);
-      if (!hasAccess) {
-        return NextResponse.json({ error: 'アクセス権がありません' }, { status: 403 });
-      }
-    }
-
-    // member: 原価を隠す（マージン込み価格のみ表示）
-    if (user.role === 'member') {
-      return NextResponse.json({
-        ...quote,
-        totalAmount: undefined,
-        items: quote.items.map((item) => ({
-          ...item,
-          unitPrice: undefined,
-          subtotal: undefined,
-        })),
-      });
-    }
-
-    // partner: member価格を隠す（自社の明細のみ表示）
-    if (user.role === 'partner') {
-      return NextResponse.json({
-        ...quote,
-        memberTotalAmount: undefined,
-        items: quote.items
-          .filter((item) => item.partnerId === user.partnerId)
-          .map((item) => ({
-            ...item,
-            memberUnitPrice: undefined,
-            memberSubtotal: undefined,
-          })),
-      });
-    }
-
-    return NextResponse.json(quote);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching quote:', error);
     return NextResponse.json(

@@ -1,35 +1,24 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import { ProjectForm } from '@/components/projects/project-form'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { requireRole } from '@/lib/auth'
+import { getProjectForUser } from '@/lib/projects/get-project'
 
-export default function EditProjectPage() {
-  const { id } = useParams<{ id: string }>()
-  const [project, setProject] = useState<Record<string, unknown> | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+export default async function EditProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const user = await requireRole(['member'])
+  const { id } = await params
+  const result = await getProjectForUser(id, user)
 
-  useEffect(() => {
-    fetch(`/api/projects/${id}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => setProject(data))
-      .finally(() => setIsLoading(false))
-  }, [id])
+  if (result === null) notFound()
+  if (result === 'forbidden') redirect('/member/projects')
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (!project) {
-    return <p className="text-center py-12 text-gray-500">案件が見つかりません</p>
-  }
+  const project = result
 
   return (
     <div>
@@ -47,18 +36,24 @@ export default function EditProjectPage() {
           mode="edit"
           projectId={id}
           initialData={{
-            clientName: project.clientName as string,
-            clientNameKana: (project.clientNameKana as string) ?? '',
-            postalCode: (project.postalCode as string) ?? '',
-            address: (project.address as string) ?? '',
-            addressDetail: (project.addressDetail as string) ?? '',
-            buildingType: (project.buildingType as string) ?? '',
-            roofType: (project.roofType as string) ?? '',
-            notes: (project.notes as string) ?? '',
-            latitude: project.latitude as number | null,
-            longitude: project.longitude as number | null,
+            clientName: project.clientName,
+            clientNameKana: project.clientNameKana ?? '',
+            postalCode: project.postalCode ?? '',
+            address: project.address ?? '',
+            addressDetail: project.addressDetail ?? '',
+            buildingType: project.buildingType ?? '',
+            roofType: project.roofType ?? '',
+            notes: project.notes ?? '',
+            latitude: project.latitude,
+            longitude: project.longitude,
           }}
-          initialFiles={(project.files as Array<{ id: string; fileName: string; fileSize: number | null; fileUrl: string; fileType: string }>) ?? []}
+          initialFiles={project.files.map((f) => ({
+            id: f.id,
+            fileName: f.fileName,
+            fileSize: f.fileSize,
+            url: f.url,
+            fileType: f.fileType,
+          }))}
         />
       </div>
     </div>
