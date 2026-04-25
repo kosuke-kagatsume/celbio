@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects'
+import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/project-constants'
 
 const statusColors: Record<ProjectStatus, string> = {
   registered: 'bg-gray-100 text-gray-800',

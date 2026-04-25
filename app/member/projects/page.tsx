@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProjectList } from '@/components/projects/project-list'
 import { Plus, Search, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { PROJECT_STATUSES } from '@/lib/projects'
+import { PROJECT_STATUSES } from '@/lib/project-constants'
 
 interface ProjectItem {
   id: string

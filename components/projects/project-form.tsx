@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { GoogleMapPicker } from '@/components/maps/google-map-picker'
 import { FileUpload, FileListItem } from '@/components/files/file-upload'
 import { Loader2 } from 'lucide-react'
-import { FILE_TYPES, type ProjectFileType } from '@/lib/projects'
+import { FILE_TYPES, type ProjectFileType } from '@/lib/project-constants'
 
 interface ProjectFormData {
   clientName: string
