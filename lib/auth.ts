@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -16,9 +17,9 @@ export interface AuthUser {
 }
 
 /**
- * 現在のログインユーザーを取得
+ * 現在のログインユーザーを取得（リクエスト内で1度だけ実行）
  */
-export async function getUser(): Promise<AuthUser | null> {
+export const getUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient()
 
   const { data: { user: supabaseUser } } = await supabase.auth.getUser()
@@ -27,7 +28,6 @@ export async function getUser(): Promise<AuthUser | null> {
     return null
   }
 
-  // DBからユーザー情報を取得
   const user = await prisma.user.findUnique({
     where: { supabaseUserId: supabaseUser.id },
     include: {
@@ -50,7 +50,7 @@ export async function getUser(): Promise<AuthUser | null> {
     memberName: user.member?.name,
     partnerName: user.partner?.name,
   }
-}
+})
 
 /**
  * 認証必須のページで使用
