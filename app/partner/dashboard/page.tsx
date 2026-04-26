@@ -1,8 +1,9 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { requireRole } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { getPartnerDashboardStats } from '@/lib/dashboard/partner-stats'
+import { getCurrentMonthRange } from '@/lib/dashboard/period'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   FileText,
   ShoppingCart,
@@ -12,57 +13,19 @@ import {
   AlertCircle,
   TrendingUp,
   Truck,
-  Loader2,
-} from 'lucide-react';
-import Link from 'next/link';
+} from 'lucide-react'
+import Link from 'next/link'
 
-interface DashboardData {
-  pendingQuotes: number;
-  pendingOrders: number;
-  shippedOrders: number;
-  unpaidInvoices: number;
-  monthlyInvoiceAmount: number;
-  monthlyInvoiceCount: number;
-  monthlyPaymentAmount: number;
-  monthlyPaymentCount: number;
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount)
 }
 
-export default function PartnerDashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default async function PartnerDashboardPage() {
+  const user = await requireRole(['partner'])
+  if (!user.partnerId) redirect('/login')
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      const response = await fetch('/api/dashboard');
-      if (response.ok) {
-        const result = await response.json();
-        setData(result);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency: 'JPY',
-    }).format(amount);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const data = await getPartnerDashboardStats(user.partnerId)
+  const { year, month } = getCurrentMonthRange()
 
   return (
     <div>
@@ -79,17 +42,16 @@ export default function PartnerDashboardPage() {
         </Link>
       </div>
 
-      {/* アラート/要対応 */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Link href="/partner/quotes?status=pending">
-          <Card className={`hover:shadow-md transition-shadow cursor-pointer ${(data?.pendingQuotes || 0) > 0 ? 'border-blue-200 bg-blue-50' : ''}`}>
+          <Card className={`hover:shadow-md transition-shadow cursor-pointer ${data.pendingQuotes > 0 ? 'border-blue-200 bg-blue-50' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium ${(data?.pendingQuotes || 0) > 0 ? 'text-blue-900' : ''}`}>見積依頼</CardTitle>
+              <CardTitle className={`text-sm font-medium ${data.pendingQuotes > 0 ? 'text-blue-900' : ''}`}>見積依頼</CardTitle>
               <FileText className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${(data?.pendingQuotes || 0) > 0 ? 'text-blue-900' : ''}`}>{data?.pendingQuotes || 0}件</div>
-              {(data?.pendingQuotes || 0) > 0 ? (
+              <div className={`text-2xl font-bold ${data.pendingQuotes > 0 ? 'text-blue-900' : ''}`}>{data.pendingQuotes}件</div>
+              {data.pendingQuotes > 0 ? (
                 <p className="text-xs text-blue-600 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   回答待ち
@@ -102,14 +64,14 @@ export default function PartnerDashboardPage() {
         </Link>
 
         <Link href="/partner/orders">
-          <Card className={`hover:shadow-md transition-shadow cursor-pointer ${(data?.pendingOrders || 0) > 0 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+          <Card className={`hover:shadow-md transition-shadow cursor-pointer ${data.pendingOrders > 0 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium ${(data?.pendingOrders || 0) > 0 ? 'text-yellow-900' : ''}`}>受注</CardTitle>
+              <CardTitle className={`text-sm font-medium ${data.pendingOrders > 0 ? 'text-yellow-900' : ''}`}>受注</CardTitle>
               <ShoppingCart className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${(data?.pendingOrders || 0) > 0 ? 'text-yellow-900' : ''}`}>{data?.pendingOrders || 0}件</div>
-              {(data?.pendingOrders || 0) > 0 ? (
+              <div className={`text-2xl font-bold ${data.pendingOrders > 0 ? 'text-yellow-900' : ''}`}>{data.pendingOrders}件</div>
+              {data.pendingOrders > 0 ? (
                 <p className="text-xs text-yellow-600 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   出荷待ち
@@ -128,7 +90,7 @@ export default function PartnerDashboardPage() {
               <Truck className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data?.shippedOrders || 0}件</div>
+              <div className="text-2xl font-bold">{data.shippedOrders}件</div>
               <p className="text-xs text-muted-foreground">納品待ち</p>
             </CardContent>
           </Card>
@@ -141,14 +103,13 @@ export default function PartnerDashboardPage() {
               <Receipt className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data?.unpaidInvoices || 0}件</div>
+              <div className="text-2xl font-bold">{data.unpaidInvoices}件</div>
               <p className="text-xs text-muted-foreground">未入金</p>
             </CardContent>
           </Card>
         </Link>
       </div>
 
-      {/* 今月の実績 */}
       <div className="grid gap-4 md:grid-cols-2 mb-8">
         <Card>
           <CardHeader>
@@ -156,17 +117,11 @@ export default function PartnerDashboardPage() {
               <TrendingUp className="h-5 w-5" />
               今月の請求
             </CardTitle>
-            <CardDescription>
-              {new Date().getFullYear()}年{new Date().getMonth() + 1}月
-            </CardDescription>
+            <CardDescription>{year}年{month}月</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {formatCurrency(data?.monthlyInvoiceAmount || 0)}
-            </div>
-            <p className="text-muted-foreground">
-              {data?.monthlyInvoiceCount || 0}件の請求
-            </p>
+            <div className="text-3xl font-bold">{formatCurrency(data.monthlyInvoiceAmount)}</div>
+            <p className="text-muted-foreground">{data.monthlyInvoiceCount}件の請求</p>
           </CardContent>
         </Card>
 
@@ -176,22 +131,15 @@ export default function PartnerDashboardPage() {
               <CreditCard className="h-5 w-5" />
               今月の入金
             </CardTitle>
-            <CardDescription>
-              {new Date().getFullYear()}年{new Date().getMonth() + 1}月
-            </CardDescription>
+            <CardDescription>{year}年{month}月</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {formatCurrency(data?.monthlyPaymentAmount || 0)}
-            </div>
-            <p className="text-muted-foreground">
-              {data?.monthlyPaymentCount || 0}件の入金
-            </p>
+            <div className="text-3xl font-bold text-green-600">{formatCurrency(data.monthlyPaymentAmount)}</div>
+            <p className="text-muted-foreground">{data.monthlyPaymentCount}件の入金</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* クイックアクション */}
       <Card>
         <CardHeader>
           <CardTitle>クイックアクション</CardTitle>
@@ -221,5 +169,5 @@ export default function PartnerDashboardPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
