@@ -6,9 +6,10 @@ import { QUOTE_STATUSES } from '@/lib/quote-constants'
 
 interface Props {
   initialStatus: string
+  statuses?: Record<string, string>
 }
 
-export function QuotesFilterBar({ initialStatus }: Props) {
+export function QuotesFilterBar({ initialStatus, statuses = QUOTE_STATUSES }: Props) {
   const router = useRouter()
   const pathname = usePathname()
 
@@ -27,7 +28,7 @@ export function QuotesFilterBar({ initialStatus }: Props) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">全て</SelectItem>
-          {Object.entries(QUOTE_STATUSES).map(([key, label]) => (
+          {Object.entries(statuses).map(([key, label]) => (
             <SelectItem key={key} value={key}>{label}</SelectItem>
           ))}
         </SelectContent>
